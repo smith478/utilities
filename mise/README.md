@@ -121,3 +121,46 @@ mise run lint
 3. Pin your Python version in `.mise.toml`
 4. Include environment-specific dependencies in requirements.txt
 5. Use mise tasks for common operations
+
+## Example
+
+Here we will create a simple example project using JAX
+
+Create a new directory for the project:
+```bash
+mkdir jax-example
+cd jax-example
+```
+
+Create a mise.toml file
+```yaml
+[tool.mise]
+python = "3.10"
+
+[tools]
+python = "3.10"
+```
+
+Create a requirements.txt file with the Python library dependencies
+```
+jax
+jaxlib
+numpy
+matplotlib
+```
+
+Create and activate the environment
+```bash
+mise install
+mise shell
+```
+
+Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+Verify installation
+```bash
+python -c "import jax; print(jax.__version__)"
+```

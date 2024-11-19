@@ -1,0 +1,5 @@
+[tool.mise]
+python = "3.10"
+
+[tools]
+python = "3.10"
