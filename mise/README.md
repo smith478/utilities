@@ -16,13 +16,25 @@ brew install mise
 curl https://mise.run | sh
 ```
 
+If you need to find the location of `mise` on your machine, then you can run 
+```bash
+which mise
+```
+
+Hook mise into your shell (pick the right one for your shell):
+
+```bash
+# note this assumes mise is located at ~/.local/bin/mise
+# which is what https://mise.run does by default
+echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc
+echo 'eval "$(~/.local/bin/mise activate zsh)"' >> ~/.zshrc
+echo '~/.local/bin/mise activate fish | source' >> ~/.config/fish/config.fish
+```
+
 ## Basic Commands
 
 ### Initialize mise
 ```bash
-# Initialize mise in your project
-mise init
-
 # Create a .mise.toml file
 mise use python@latest
 ```
@@ -133,12 +145,9 @@ cd jax-example
 ```
 
 Create a mise.toml file
-```yaml
-[tool.mise]
-python = "3.10"
-
-[tools]
-python = "3.10"
+```bash
+mise use python@3.11
+mise install
 ```
 
 Create a requirements.txt file with the Python library dependencies
@@ -149,11 +158,12 @@ numpy
 matplotlib
 ```
 
-Create and activate the environment
+Activate the mise managed environment
 ```bash
-mise install
-mise shell
+eval "$(mise activate bash)"
 ```
+Replace `bash` with your shell if necessary (e.g., `zsh` or `fish`).
+
 
 Install dependencies
 ```bash
