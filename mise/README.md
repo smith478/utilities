@@ -4,6 +4,25 @@ Mise is a tool that serves the following purposes (from the [github repo](https:
 - Like direnv it manages environment variables for different project directories.
 - Like make it manages tasks used to build and test projects.
 
+For use with Python it also has the following benefits (some of which we will cover in more detail below):
+1. Automatic Activation:
+mise automatically activates the virtual environment based on the mise.toml configuration when you navigate into the project directory. No need to manually activate/deactivate.
+
+2. Centralized Configuration:
+Dependencies and environment settings are stored in the mise.toml file, providing a single source of truth for your project setup.
+
+3. Python Version Management:
+Specify the Python version to use for the virtual environment in the mise.toml file, ensuring consistency across machines.
+
+4. Path Flexibility:
+The virtual environment can be stored in various locations (relative, absolute, or template-based paths), making it easy to align with a team or in CI/CD workflows.
+
+5. Automation:
+The create=true option automates the creation of the virtual environment if it doesn't already exist.
+
+6. Reproducibility:
+Combining mise.toml with mise.lock allows you to replicate the environment across machines.
+
 ## Installation
 
 First, install mise using one of these methods:
