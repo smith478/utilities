@@ -153,7 +153,7 @@ mise run lint
 4. Include environment-specific dependencies in requirements.txt
 5. Use mise tasks for common operations
 
-## Example
+## JAX Example
 
 Here we will create a simple example project using JAX
 
@@ -177,19 +177,38 @@ numpy
 matplotlib
 ```
 
-Activate the mise managed environment
+Create a Python virtual environment
 ```bash
-eval "$(mise activate bash)"
+python -m venv .venv
 ```
-Replace `bash` with your shell if necessary (e.g., `zsh` or `fish`).
 
+Activate the environment
+```bash
+source .venv/bin/activate
+```
 
-Install dependencies
+Install the dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-Verify installation
-```bash
-python -c "import jax; print(jax.__version__)"
+Configure `[env]` in `mise.toml` so that your environment will automatically be activated when you `cd` into the directory.
+
+```yaml
+[tools]
+python = "3.11"  # Optional: Specify Python version for consistency.
+
+[env]
+_.python.venv = ".venv"  # Relative path to the virtual environment.
 ```
+
+If you want `mise` to create the virtual environment automatically if it doesn't exist, you can add `create = true`:
+```yaml
+[tools]
+python = "3.11"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+```
+
+With this setting, when you navigate into the project directory and run mise install, the .venv folder will be created if it doesn't already exist.
