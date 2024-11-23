@@ -212,3 +212,16 @@ _.python.venv = { path = ".venv", create = true }
 ```
 
 With this setting, when you navigate into the project directory and run mise install, the .venv folder will be created if it doesn't already exist.
+
+Verify your setup:
+From within the project directory activate the environment:
+```bash
+eval "$(mise activate zsh)"
+```
+Note: make sure the command matches your shell (shown with `zsh`)
+
+Check the Python version and environment path:
+```bash
+python --version
+which python  # Should point to `.venv/bin/python`
+```
