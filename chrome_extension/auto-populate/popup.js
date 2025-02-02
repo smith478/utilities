@@ -1,8 +1,16 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const statusDiv = document.createElement('div');
     statusDiv.id = 'status';
-    statusDiv.style.marginBottom = '10px';
     document.body.insertBefore(statusDiv, document.getElementById('extractButton'));
+    
+    // Load saved Streamlit host
+    const { streamlitHost = 'http://localhost:8501' } = await chrome.storage.sync.get('streamlitHost');
+    document.getElementById('streamlitHost').value = streamlitHost;
+    
+    // Save Streamlit host when changed
+    document.getElementById('streamlitHost').addEventListener('change', (e) => {
+        chrome.storage.sync.set({ streamlitHost: e.target.value });
+    });
     
     // Check if we're on a supported page
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
@@ -10,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!tab?.id) return;
         
         try {
-            // Test the connection to the content script
             await chrome.tabs.sendMessage(tab.id, { action: "ping" });
             statusDiv.textContent = "Ready to extract data";
             statusDiv.style.color = "green";
@@ -24,6 +31,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.getElementById("extractButton").addEventListener("click", async () => {
     const statusDiv = document.getElementById('status');
+    const streamlitHost = document.getElementById('streamlitHost').value;
+    
+    if (!streamlitHost) {
+        statusDiv.textContent = "Please enter a Streamlit host address";
+        statusDiv.style.color = "red";
+        return;
+    }
+    
     statusDiv.textContent = "Extracting data...";
     
     try {
@@ -43,7 +58,8 @@ document.getElementById("extractButton").addEventListener("click", async () => {
             
             chrome.runtime.sendMessage({
                 action: "sendToStreamlit",
-                data: response.data
+                data: response.data,
+                streamlitHost
             }, (response) => {
                 if (chrome.runtime.lastError) {
                     throw new Error(chrome.runtime.lastError.message);

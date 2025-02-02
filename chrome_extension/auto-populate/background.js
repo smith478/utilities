@@ -5,26 +5,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     
     if (request.action === "sendToStreamlit") {
+        // Get the Streamlit host from the request
+        const streamlitHost = request.streamlitHost?.trim() || 'http://localhost:8501';
         const rawData = JSON.stringify(request.data);
         const timestamp = Date.now();
-        const streamlitUrl = `http://localhost:8501/?data=${encodeURIComponent(rawData)}&_=${timestamp}`;
+        
+        // Ensure the host ends with a trailing slash for consistent URL joining
+        const baseUrl = streamlitHost.endsWith('/') ? streamlitHost : `${streamlitHost}/`;
+        const streamlitUrl = `${baseUrl}?data=${encodeURIComponent(rawData)}&_=${timestamp}`;
         
         console.log("Attempting to navigate to:", streamlitUrl);
         
-        // First get the current window
+        // Get the current window
         chrome.windows.getCurrent({}, (currentWindow) => {
-            // Then look for Streamlit tabs across all windows
+            // Look for Streamlit tabs across all windows
             chrome.tabs.query({}, (tabs) => {
-                // First try to find a Streamlit tab in the current window
+                // Try to find a Streamlit tab in the current window
                 let streamlitTab = tabs.find(tab => 
-                    tab.url?.includes('localhost:8501') && 
+                    tab.url?.includes(streamlitHost) && 
                     tab.windowId === currentWindow.id
                 );
                 
                 // If no tab found in current window, look in other windows
                 if (!streamlitTab) {
                     streamlitTab = tabs.find(tab => 
-                        tab.url?.includes('localhost:8501')
+                        tab.url?.includes(streamlitHost)
                     );
                 }
                 
@@ -57,6 +62,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             });
         });
         
-        return true; // Keep message channel open for async response
+        return true;
     }
 });
