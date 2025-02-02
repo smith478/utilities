@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Website for Chrome Extension</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    textarea {
+      height: 100px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Test Website for Chrome Extension</h1>
+
+  <!-- Patient Information Section -->
+  <div class="section">
+    <h2>Patient Information</h2>
+    <label for="patientId">Patient ID:</label>
+    <input type="text" id="patientId" value="1">
+
+    <label for="patientName">Patient Name:</label>
+    <input type="text" id="patientName" value="Jane">
+
+    <label for="species">Species:</label>
+    <input type="text" id="species" value="Canine">
+
+    <label for="breed">Breed:</label>
+    <input type="text" id="breed" value="Mixed Cane Corso">
+
+    <label for="gender">Gender:</label>
+    <input type="text" id="gender" value="Male">
+
+    <label for="weight">Weight:</label>
+    <input type="text" id="weight" value="125 Lbs">
+
+    <label for="age">Age:</label>
+    <input type="text" id="age" value="2 years 7 months and 3 weeks old">
+
+    <label for="dateOfBirth">Date of Birth:</label>
+    <input type="text" id="dateOfBirth" value="05-Jun-2022">
+  </div>
+
+  <!-- Clinical Findings Section -->
+  <div class="section">
+    <h2>Clinical Findings</h2>
+    <label for="clinicalFindings">Clinical Findings:</label>
+    <textarea id="clinicalFindings">The patient presents with a history of lameness and joint stiffness.</textarea>
+  </div>
+
+  <!-- Report Section -->
+  <div class="section">
+    <h2>Report</h2>
+    <label for="reportFindings">Radiographic Findings:</label>
+    <textarea id="reportFindings">Mild osteoarthritis observed in the left hip joint.</textarea>
+  </div>
+</body>
+</html>

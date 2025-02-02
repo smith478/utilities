@@ -1,0 +1,28 @@
+{
+    "manifest_version": 3,
+    "name": "Streamlit Data Bridge",
+    "version": "1.0",
+    "description": "Extracts data from a website and sends it to a Streamlit app.",
+    "permissions": ["activeTab", "scripting", "tabs"],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_popup": "popup.html",
+      "default_icon": {
+        "16": "public/icon16.png",
+        "48": "public/icon48.png",
+        "128": "public/icon128.png"
+      }
+    },
+    "content_scripts": [
+      {
+        "matches": [
+          "file:///*/*", 
+          "http://localhost:8501/*"
+        ],
+        "js": ["content.js"],
+        "all_frames": true
+      }
+    ]
+  }
