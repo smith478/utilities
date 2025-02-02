@@ -7,12 +7,25 @@
         "activeTab",
         "scripting",
         "tabs"
-        // "http://localhost:8501/*",
-        // "file:///*/*"
+    ],
+    "host_permissions": [
+        "http://*/*",
+        "https://*/*",
+        "file:///*/*"
     ],
     "background": {
       "service_worker": "background.js"
     },
+    "content_scripts": [
+      {
+        "matches": [
+          "http://*/*",
+          "https://*/*",
+          "file://*/*"
+        ],
+        "js": ["content.js"]
+      }
+    ],
     "action": {
       "default_popup": "popup.html",
       "default_icon": {
@@ -20,15 +33,5 @@
         "48": "public/icon48.png",
         "128": "public/icon128.png"
       }
-    },
-    "content_scripts": [
-      {
-        "matches": [
-          "file:///*/*", 
-          "http://localhost:8501/*"
-        ],
-        "js": ["content.js"],
-        "all_frames": true
-      }
-    ]
-  }
+    }
+}

@@ -10,9 +10,6 @@ data_str = query_params.get("data", [None])[0]
 
 if data_str:
     try:
-        # Debug: Show raw data before processing
-        st.write("Raw data string:", data_str)
-        
         decoded_data = unquote(data_str)
         data = json.loads(decoded_data)
         
