@@ -1,19 +1,25 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "sendToStreamlit") {
-      // Wrap in Promise to handle async properly
-      new Promise((resolve) => {
-        const jsonData = encodeURIComponent(JSON.stringify(request.data));
-        const streamlitUrl = `http://localhost:8501/?data=${jsonData}`;
+      const rawData = JSON.stringify(request.data);
+      const timestamp = Date.now();
+      const streamlitUrl = `http://localhost:8501/?data=${encodeURIComponent(rawData)}&_=${timestamp}`;
   
-        chrome.tabs.query({ url: "http://localhost:8501/*" }, (tabs) => {
-          if (tabs && tabs.length > 0) {
-            chrome.tabs.update(tabs[0].id, { url: streamlitUrl }, () => resolve());
-          } else {
-            chrome.tabs.create({ url: streamlitUrl }, () => resolve());
-          }
-        });
-      }).then(() => sendResponse({ success: true }));
-      
-      return true; // Keep channel open
+      chrome.tabs.query({ url: "http://localhost:8501/*" }, (tabs) => {
+        if (tabs?.[0]?.id) {
+          // Force new navigation with cache busting
+          chrome.tabs.update(tabs[0].id, { 
+            url: streamlitUrl,
+            active: true 
+          }, (tab) => {
+            console.log("Updated tab:", tab.id);
+          });
+        } else {
+          chrome.tabs.create({ url: streamlitUrl }, (tab) => {
+            console.log("Created new tab:", tab.id);
+          });
+        }
+        sendResponse({ success: true });
+      });
+      return true;
     }
   });

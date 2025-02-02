@@ -1,31 +1,26 @@
-document.getElementById("extractButton").addEventListener("click", () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs[0]?.id) {
+document.getElementById("extractButton").addEventListener("click", async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      if (!tab?.id) {
         alert("No active tab found");
         return;
       }
   
-      chrome.tabs.sendMessage(
-        tabs[0].id,
-        { action: "extractData" },
-        (response) => {
-          // Handle connection errors
-          if (chrome.runtime.lastError) {
-            console.error("Connection error:", chrome.runtime.lastError);
-            alert(`Error: ${chrome.runtime.lastError.message}`);
-            return;
-          }
-  
-          // Handle content script response
-          if (response?.success) {
-            chrome.runtime.sendMessage({
-              action: "sendToStreamlit",
-              data: response.data
-            });
-          } else {
-            alert("Failed to extract data: " + (response?.error || "Unknown error"));
-          }
-        }
-      );
-    });
+      // Verify content script connection
+      const response = await chrome.tabs.sendMessage(tab.id, { action: "extractData" });
+      
+      if (response?.success) {
+        chrome.runtime.sendMessage({
+          action: "sendToStreamlit",
+          data: response.data
+        });
+        alert("Data sent successfully!");
+      } else {
+        alert("Extraction failed: " + (response?.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Popup error:", error);
+      alert(`Connection failed: ${error.message}\n\nMake sure you're on the test website!`);
+    }
   });

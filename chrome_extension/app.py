@@ -10,9 +10,11 @@ data_str = query_params.get("data", [None])[0]
 
 if data_str:
     try:
-        # Decode and parse data
-        data_str = unquote(data_str)
-        data = json.loads(data_str)
+        # Debug: Show raw data before processing
+        st.write("Raw data string:", data_str)
+        
+        decoded_data = unquote(data_str)
+        data = json.loads(decoded_data)
         
         # Display patient information
         st.header("Patient Information")
@@ -25,15 +27,14 @@ if data_str:
         st.write(f"**Age:** {data.get('age', 'N/A')}")
         st.write(f"**Date of Birth:** {data.get('dateOfBirth', 'N/A')}")
         
-        # Clinical Findings
         st.header("Clinical Findings")
         st.write(data.get('clinicalFindings', 'No findings available'))
         
-        # Report Findings
         st.header("Report Findings")
         st.write(data.get('reportFindings', 'No findings available'))
         
-    except json.JSONDecodeError:
-        st.error("Invalid data format received")
+    except Exception as e:
+        st.error(f"Error processing data: {str(e)}")
+        st.json(data_str)  # Show raw data for debugging
 else:
     st.info("No data received. Use the Chrome Extension to send data.")

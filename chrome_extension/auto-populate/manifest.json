@@ -3,7 +3,13 @@
     "name": "Streamlit Data Bridge",
     "version": "1.0",
     "description": "Extracts data from a website and sends it to a Streamlit app.",
-    "permissions": ["activeTab", "scripting", "tabs"],
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "tabs"
+        // "http://localhost:8501/*",
+        // "file:///*/*"
+    ],
     "background": {
       "service_worker": "background.js"
     },
