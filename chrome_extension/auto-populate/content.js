@@ -59,7 +59,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     clinicalFindings: extractText('#clinic-finding-information-box > div > div > div > table > tbody > tr.clinical-finding-view-box-2806.clinical-finding-view-field-container > td'),
                     clinicalQuestion: extractText('#clinic-finding-information-box > div > div > div > table > tbody > tr.clinical-finding-view-box-2808.clinical-finding-view-field-container > td'),
                     comparisonStudy: extractText('#clinic-finding-information-box > div > div > div > table > tbody > tr.clinical-finding-view-box-2809.clinical-finding-view-field-container > td'),
-                    reportFindings: extractText('#report-information-box > div > table > tbody > tr.report-view-box-2810.report-view-field-container > td:nth-child(2)')
+                    reportFindings: (() => {
+                        const iframe = document.querySelector('#reportBox2810_ifr');
+                        if (iframe) {
+                            try {
+                                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                                const body = iframeDoc.querySelector('body');
+                                return body ? body.textContent.trim() : '';
+                            } catch (e) {
+                                console.error('Error accessing iframe content:', e);
+                                return '';
+                            }
+                        } else {
+                            return extractText('#report-information-box > div > table > tbody > tr.report-view-box-2810.report-view-field-container > td:nth-child(2)');
+                        }
+                    })()
                 };
 
                 // Log the extracted data for debugging
