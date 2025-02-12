@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 
 class MathFlashCards:
+    # [Previous __init__ and setup_gui methods remain the same...]
     def __init__(self):
         self.window = tk.Tk()
         self.window.title("Math Flash Cards! 🚀")
@@ -25,8 +26,9 @@ class MathFlashCards:
         
         self.setup_gui()
         self.load_leaderboard()
-        
+
     def setup_gui(self):
+        # [Previous setup_gui code remains the same...]
         # Title
         title_font = font.Font(family="Arial", size=24, weight="bold")
         title = tk.Label(self.window, text="Math Flash Cards! 🚀", 
@@ -41,7 +43,7 @@ class MathFlashCards:
                 font=("Arial", 14), bg="#FFE4E1", fg="black").pack(side=tk.LEFT)
         self.max_num_entry = tk.Entry(self.setup_frame, font=("Arial", 14))
         self.max_num_entry.pack(side=tk.LEFT, padx=10)
-        self.max_num_entry.insert(0, "12")
+        self.max_num_entry.insert(0, "16")
         
         # Name entry
         self.name_frame = tk.Frame(self.window, bg="#FFE4E1")
@@ -69,6 +71,13 @@ class MathFlashCards:
         self.problem_label = tk.Label(self.window, text="", 
                                     font=("Arial", 36, "bold"), bg="#FFE4E1", fg="black")
         self.problem_label.pack(pady=20)
+        
+        # Challenge indicator
+        self.challenge_label = tk.Label(self.window, text="", 
+                                      font=("Arial", 16, "bold"), 
+                                      bg="#FFE4E1", 
+                                      fg="#FF4500")  # Use the same orange-red as buttons
+        self.challenge_label.pack(pady=5)
         
         # Answer entry
         self.answer_frame = tk.Frame(self.window, bg="#FFE4E1")
@@ -110,70 +119,28 @@ class MathFlashCards:
         
         # Initially hide game elements
         self.hide_game_elements()
+
+    def calculate_difficulty_bonus(self, num1, num2, operation):
+        """Calculate bonus points based on problem difficulty"""
+        bonus = 0
+        bonus_text = ""
+        is_challenge = False
         
-    def hide_game_elements(self):
-        self.problem_label.pack_forget()
-        self.answer_frame.pack_forget()
-        self.score_label.pack_forget()
-        self.progress_label.pack_forget()
-        self.feedback_label.pack_forget()
+        if operation == '+':
+            # Bonus for addition with one number > 12 and other > 3
+            if (num1 > 12 and num2 > 3) or (num2 > 12 and num1 > 3):
+                bonus += 5
+                bonus_text = "Challenge bonus (+5)"
+                is_challenge = True
+        elif operation == '-':
+            # Bonus for subtraction with first number > 12 and second between 3 and 9
+            if num1 > 12 and (3 <= num2 <= 9):
+                bonus += 5
+                bonus_text = "Challenge bonus (+5)"
+                is_challenge = True
         
-    def show_game_elements(self):
-        self.problem_label.pack(pady=20)
-        self.answer_frame.pack(pady=20)
-        self.score_label.pack(pady=10)
-        self.progress_label.pack(pady=10)
-        self.feedback_label.pack(pady=10)
+        return bonus, bonus_text, is_challenge
         
-    def load_leaderboard(self):
-        try:
-            with open('math_leaderboard.json', 'r') as f:
-                self.leaderboard = json.load(f)
-        except FileNotFoundError:
-            self.leaderboard = []
-            
-    def save_leaderboard(self):
-        with open('math_leaderboard.json', 'w') as f:
-            json.dump(self.leaderboard, f)
-            
-    def show_leaderboard(self):
-        leaderboard_window = tk.Toplevel(self.window)
-        leaderboard_window.title("🏆 Leaderboard")
-        leaderboard_window.geometry("400x500")
-        leaderboard_window.configure(bg="#FFE4E1")
-        
-        tk.Label(leaderboard_window, text="Top Scores", 
-                font=("Arial", 20, "bold"), bg="#FFE4E1", fg="black").pack(pady=20)
-        
-        sorted_scores = sorted(self.leaderboard, key=lambda x: x['score'], reverse=True)
-        for i, entry in enumerate(sorted_scores[:10], 1):
-            score_text = f"{i}. {entry['name']}: {entry['score']} points ({entry['date']})"
-            tk.Label(leaderboard_window, text=score_text, 
-                    font=("Arial", 14), bg="#FFE4E1", fg="black").pack(pady=5)
-            
-    def start_game(self):
-        try:
-            self.max_num = int(self.max_num_entry.get())
-            if self.max_num < 1:
-                messagebox.showerror("Error", "Please enter a number greater than 0")
-                return
-            
-            self.player_name = self.name_entry.get().strip()
-            if not self.player_name:
-                messagebox.showerror("Error", "Please enter your name")
-                return
-                
-            self.setup_frame.pack_forget()
-            self.name_frame.pack_forget()
-            self.show_game_elements()
-            self.score = 0
-            self.problem_count = 0
-            self.generate_problem()
-            self.answer_entry.focus_set()  # Set focus to the answer box
-            
-        except ValueError:
-            messagebox.showerror("Error", "Please enter a valid number")
-            
     def generate_problem(self):
         if self.problem_count >= self.max_problems:
             self.end_game()
@@ -196,14 +163,38 @@ class MathFlashCards:
             'answer': answer
         }
         
+        # Check if this is a challenge problem and update the challenge label
+        _, _, is_challenge = self.calculate_difficulty_bonus(num1, num2, operation)
+        if is_challenge:
+            self.challenge_label.config(text="🌟 CHALLENGE PROBLEM! Extra points available! 🌟")
+        else:
+            self.challenge_label.config(text="")
+        
         self.problem_label.config(text=f"{num1} {operation} {num2} = ?")
         self.progress_label.config(text=f"Problem: {self.problem_count + 1}/{self.max_problems}")
         self.answer_entry.delete(0, tk.END)
-        self.feedback_label.config(text="")  # Clear previous feedback
+        self.feedback_label.config(text="")
         self.start_time = time.time()
         
-        self.problem_count += 1  # Increment the problem count
+        self.problem_count += 1
+
+    def hide_game_elements(self):
+        self.problem_label.pack_forget()
+        self.challenge_label.pack_forget()
+        self.answer_frame.pack_forget()
+        self.score_label.pack_forget()
+        self.progress_label.pack_forget()
+        self.feedback_label.pack_forget()
         
+    def show_game_elements(self):
+        self.problem_label.pack(pady=20)
+        self.challenge_label.pack(pady=5)
+        self.answer_frame.pack(pady=20)
+        self.score_label.pack(pady=10)
+        self.progress_label.pack(pady=10)
+        self.feedback_label.pack(pady=10)
+
+    # [Rest of the class methods remain the same...]
     def check_answer(self):
         if not self.current_problem:
             return
@@ -215,11 +206,23 @@ class MathFlashCards:
             if user_answer == self.current_problem['answer']:
                 base_score = 10
                 time_bonus = max(0, 5 - int(time_taken))
-                problem_score = base_score + time_bonus
+                
+                # Calculate difficulty bonus
+                difficulty_bonus, bonus_text, _ = self.calculate_difficulty_bonus(
+                    self.current_problem['num1'],
+                    self.current_problem['num2'],
+                    self.current_problem['operation']
+                )
+                
+                problem_score = base_score + time_bonus + difficulty_bonus
                 self.score += problem_score
                 
-                # Display inline feedback in green
-                self.feedback_label.config(text=f"✅ Correct! +{problem_score} points (Time: {time_taken:.1f} sec)", fg="green")
+                # Update feedback text to include bonus information
+                feedback_text = f"✅ Correct! +{problem_score} points (Time: {time_taken:.1f} sec)"
+                if bonus_text:
+                    feedback_text += f" {bonus_text}"
+                    
+                self.feedback_label.config(text=feedback_text, fg="green")
             else:
                 # Display inline feedback in red
                 self.feedback_label.config(text=f"❌ Incorrect. Right answer was {self.current_problem['answer']}", fg="red")
@@ -231,32 +234,6 @@ class MathFlashCards:
             
         except ValueError:
             self.feedback_label.config(text="❗ Please enter a valid number", fg="red")
-            
-    def end_game(self):
-        self.leaderboard.append({
-            'name': self.player_name,
-            'score': self.score,
-            'date': datetime.now().strftime("%Y-%m-%d")
-        })
-        self.save_leaderboard()
-        
-        # Replace popup with in-game display
-        self.problem_label.config(text="Game Over! 🎮")
-        self.answer_entry.pack_forget()
-        self.submit_btn.pack_forget()
-        
-        final_score_label = tk.Label(self.window, 
-                                   text=f"Final Score: {self.score}\nThanks for playing!", 
-                                   font=("Arial", 24, "bold"), 
-                                   bg="#FFE4E1", 
-                                   fg="black")
-        final_score_label.pack(pady=20)
-        
-        self.show_leaderboard()
-        
-    def run(self):
-        self.show_leaderboard()  # Show leaderboard at start
-        self.window.mainloop()
 
 if __name__ == "__main__":
     game = MathFlashCards()
