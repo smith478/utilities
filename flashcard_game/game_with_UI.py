@@ -6,7 +6,6 @@ import json
 from datetime import datetime
 
 class MathFlashCards:
-    # [Previous __init__ and setup_gui methods remain the same...]
     def __init__(self):
         self.window = tk.Tk()
         self.window.title("Math Flash Cards! 🚀")
@@ -26,13 +25,133 @@ class MathFlashCards:
         
         self.setup_gui()
         self.load_leaderboard()
+        # Schedule the leaderboard popup shortly after startup
+        self.window.after(100, self.show_leaderboard_popup)
+
+    def load_leaderboard(self):
+        try:
+            with open("leaderboard.json", "r") as f:
+                self.leaderboard = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.leaderboard = []
+
+    def save_leaderboard(self):
+        with open("leaderboard.json", "w") as f:
+            json.dump(self.leaderboard, f)
+
+    def show_leaderboard_popup(self):
+        """Display the leaderboard in a popup when the app starts."""
+        if not self.leaderboard:
+            leaderboard_text = "No high scores yet. Be the first to set one!"
+        else:
+            leaderboard_text = "\n".join(
+                [f"{i+1}. {entry['name']}: {entry['score']} ({entry['time']:.1f}s)" 
+                 for i, entry in enumerate(self.leaderboard)]
+            )
+        messagebox.showinfo("Leaderboard", leaderboard_text)
+
+    def end_game(self):
+        # Calculate total game time correctly
+        total_time = time.time() - self.game_start_time
+        
+        # Add to leaderboard
+        self.leaderboard.append({
+            "name": self.player_name,
+            "score": self.score,
+            "time": total_time,
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+        # Sort and keep top 10 scores
+        self.leaderboard.sort(key=lambda x: x['score'], reverse=True)
+        self.leaderboard = self.leaderboard[:10]
+        self.save_leaderboard()
+        
+        # Build leaderboard text
+        leaderboard_text = "\n".join(
+            [f"{i+1}. {entry['name']}: {entry['score']} ({entry['time']:.1f}s)" 
+             for i, entry in enumerate(self.leaderboard)]
+        )
+        
+        # Show results (this popup now includes the updated leaderboard)
+        messagebox.showinfo(
+            "Game Over!",
+            f"Final Score: {self.score}\n"
+            f"Total Time: {total_time:.1f} seconds\n\n"
+            "🏆 Leaderboard 🏆\n" + leaderboard_text
+        )
+        
+        # Hide game elements
+        self.hide_game_elements()
+        # Instead of immediately repacking the start page elements, show a "New Game" button.
+        if not hasattr(self, 'restart_frame'):
+            self.restart_frame = tk.Frame(self.window, bg="#FFE4E1")
+            self.new_game_button = tk.Button(self.restart_frame, 
+                                             text="New Game", 
+                                             command=self.restart_game,
+                                             font=("Arial", 16, "bold"),
+                                             bg=self.button_bg, 
+                                             fg=self.button_fg,
+                                             activebackground=self.button_active_bg,
+                                             activeforeground=self.button_fg,
+                                             relief=tk.RAISED,
+                                             borderwidth=5,
+                                             padx=30, 
+                                             pady=15)
+            self.new_game_button.pack(pady=20)
+        self.restart_frame.pack(pady=20)
+
+    def restart_game(self):
+        """Hide the new game frame and show the start page to begin a new game."""
+        self.restart_frame.pack_forget()
+        # Repack the start page elements.
+        self.setup_frame.pack(pady=20)
+        self.name_frame.pack(pady=10)
+        self.start_button.pack(pady=20)
+
+    def start_game(self):
+        try:
+            self.max_num = int(self.max_num_entry.get())
+            self.player_name = self.name_entry.get().strip()
+            if not self.player_name:
+                raise ValueError("Please enter your name")
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+            return
+
+        # Hide setup elements and show game elements
+        self.setup_frame.pack_forget()
+        self.name_frame.pack_forget()
+        self.start_button.pack_forget()
+        self.hide_restart_frame()  # In case the restart frame is showing
+        self.show_game_elements()
+        # Set focus on the answer box immediately when game starts
+        self.answer_entry.focus_set()
+
+        # Initialize game state
+        self.score = 0
+        self.problem_count = 0
+        self.current_problem = None
+        self.score_label.config(text="Score: 0")
+        self.progress_label.config(text=f"Problem: 0/{self.max_problems}")
+        
+        # Record the overall game start time
+        self.game_start_time = time.time()
+        self.generate_problem()
+
+    def hide_restart_frame(self):
+        """Hide the restart frame if it is visible."""
+        if hasattr(self, 'restart_frame'):
+            self.restart_frame.pack_forget()
+
+    def run(self):
+        self.window.mainloop()
 
     def setup_gui(self):
-        # [Previous setup_gui code remains the same...]
         # Title
         title_font = font.Font(family="Arial", size=24, weight="bold")
         title = tk.Label(self.window, text="Math Flash Cards! 🚀", 
-                        font=title_font, bg="#FFE4E1", fg="black")
+                         font=title_font, bg="#FFE4E1", fg="black")
         title.pack(pady=20)
         
         # Max number entry
@@ -40,7 +159,7 @@ class MathFlashCards:
         self.setup_frame.pack(pady=20)
         
         tk.Label(self.setup_frame, text="Highest number to use:", 
-                font=("Arial", 14), bg="#FFE4E1", fg="black").pack(side=tk.LEFT)
+                 font=("Arial", 14), bg="#FFE4E1", fg="black").pack(side=tk.LEFT)
         self.max_num_entry = tk.Entry(self.setup_frame, font=("Arial", 14))
         self.max_num_entry.pack(side=tk.LEFT, padx=10)
         self.max_num_entry.insert(0, "16")
@@ -49,37 +168,38 @@ class MathFlashCards:
         self.name_frame = tk.Frame(self.window, bg="#FFE4E1")
         self.name_frame.pack(pady=10)
         tk.Label(self.name_frame, text="Your name:", 
-                font=("Arial", 14), bg="#FFE4E1", fg="black").pack(side=tk.LEFT)
+                 font=("Arial", 14), bg="#FFE4E1", fg="black").pack(side=tk.LEFT)
         self.name_entry = tk.Entry(self.name_frame, font=("Arial", 14))
         self.name_entry.pack(side=tk.LEFT, padx=10)
         
         # Start button with bold, eye-catching style
-        start_button = tk.Button(self.window, text="Start Game!", 
-                               command=self.start_game, 
-                               font=("Arial", 16, "bold"),
-                               bg=self.button_bg, 
-                               fg=self.button_fg,
-                               activebackground=self.button_active_bg,
-                               activeforeground=self.button_fg,
-                               relief=tk.RAISED,
-                               borderwidth=5,
-                               padx=30, 
-                               pady=15)
-        start_button.pack(pady=20)
+        self.start_button = tk.Button(self.window, 
+                                      text="Start Game!", 
+                                      command=self.start_game, 
+                                      font=("Arial", 16, "bold"),
+                                      bg=self.button_bg, 
+                                      fg=self.button_fg,
+                                      activebackground=self.button_active_bg,
+                                      activeforeground=self.button_fg,
+                                      relief=tk.RAISED,
+                                      borderwidth=5,
+                                      padx=30, 
+                                      pady=15)
+        self.start_button.pack(pady=20)
         
         # Problem display
         self.problem_label = tk.Label(self.window, text="", 
-                                    font=("Arial", 36, "bold"), bg="#FFE4E1", fg="black")
+                                      font=("Arial", 36, "bold"), bg="#FFE4E1", fg="black")
         self.problem_label.pack(pady=20)
         
         # Challenge indicator
         self.challenge_label = tk.Label(self.window, text="", 
-                                      font=("Arial", 16, "bold"), 
-                                      bg="#FFE4E1", 
-                                      fg="#FF4500")  # Use the same orange-red as buttons
+                                        font=("Arial", 16, "bold"), 
+                                        bg="#FFE4E1", 
+                                        fg="#FF4500")  # Use the same orange-red as buttons
         self.challenge_label.pack(pady=5)
         
-        # Answer entry
+        # Answer entry frame and widget
         self.answer_frame = tk.Frame(self.window, bg="#FFE4E1")
         self.answer_frame.pack(pady=20)
         self.answer_entry = tk.Entry(self.answer_frame, font=("Arial", 24))
@@ -88,33 +208,33 @@ class MathFlashCards:
         
         # Feedback label
         self.feedback_label = tk.Label(self.window, text="", 
-                                     font=("Arial", 18), 
-                                     bg="#FFE4E1", 
-                                     fg="green")
+                                       font=("Arial", 18), 
+                                       bg="#FFE4E1", 
+                                       fg="green")
         self.feedback_label.pack(pady=10)
         
         # Submit button with bold, eye-catching style
         self.submit_btn = tk.Button(self.answer_frame, text="Submit", 
-                                  command=self.check_answer, 
-                                  font=("Arial", 16, "bold"),
-                                  bg=self.button_bg, 
-                                  fg=self.button_fg,
-                                  activebackground=self.button_active_bg,
-                                  activeforeground=self.button_fg,
-                                  relief=tk.RAISED,
-                                  borderwidth=5,
-                                  padx=30, 
-                                  pady=10)
+                                    command=self.check_answer, 
+                                    font=("Arial", 16, "bold"),
+                                    bg=self.button_bg, 
+                                    fg=self.button_fg,
+                                    activebackground=self.button_active_bg,
+                                    activeforeground=self.button_fg,
+                                    relief=tk.RAISED,
+                                    borderwidth=5,
+                                    padx=30, 
+                                    pady=10)
         self.submit_btn.pack(side=tk.LEFT)
         
         # Score display
         self.score_label = tk.Label(self.window, text="Score: 0", 
-                                  font=("Arial", 18), bg="#FFE4E1", fg="black")
+                                    font=("Arial", 18), bg="#FFE4E1", fg="black")
         self.score_label.pack(pady=10)
         
         # Progress display
         self.progress_label = tk.Label(self.window, text="Problem: 0/10",
-                                     font=("Arial", 14), bg="#FFE4E1", fg="black")
+                                        font=("Arial", 14), bg="#FFE4E1", fg="black")
         self.progress_label.pack(pady=10)
         
         # Initially hide game elements
@@ -172,11 +292,13 @@ class MathFlashCards:
         
         self.problem_label.config(text=f"{num1} {operation} {num2} = ?")
         self.progress_label.config(text=f"Problem: {self.problem_count + 1}/{self.max_problems}")
+        self.problem_count += 1
+
+        # Clear and focus the answer entry immediately
         self.answer_entry.delete(0, tk.END)
+        self.answer_entry.focus_set()
         self.feedback_label.config(text="")
         self.start_time = time.time()
-        
-        self.problem_count += 1
 
     def hide_game_elements(self):
         self.problem_label.pack_forget()
@@ -194,7 +316,6 @@ class MathFlashCards:
         self.progress_label.pack(pady=10)
         self.feedback_label.pack(pady=10)
 
-    # [Rest of the class methods remain the same...]
     def check_answer(self):
         if not self.current_problem:
             return
