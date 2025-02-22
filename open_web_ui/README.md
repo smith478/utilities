@@ -6,6 +6,10 @@ Setup is easy using docker:
 ```bash
 docker run -d -p 3000:8080 --gpus all -v open-webui:/app/backend/data --name open-webui ghcr.io/open-webui/open-webui:main
 ```
+To use tools like web search, the `docker-compose.yaml` can be used with:
+```bash
+docker-compose up -d
+```
 
 ## Notes on tools
 
@@ -29,7 +33,8 @@ docker run -d -p 3000:8080 --gpus all -v open-webui:/app/backend/data --name ope
         tts.tts_to_file(text="Findings show a fractured humerus.", file_path="output.wav")
         ```
 3. Web based search
-    - Use search API (e.g. DuckDuckGo, SearXNG, Google PSE, Brave Search)
+    - Use search API (e.g. DuckDuckGo, SearXNG, Google PSE, Brave Search). More documentation can be found [here](https://docs.openwebui.com/category/-web-search).
+        - Create Brave account and create an API key
     - Implementation:
         Build a tool that accepts a query and then calls the chosen API to return a summary of results.
         Optionally, add a semantic search layer using sentence embeddings (e.g., with Hugging Face’s transformers) to better rank the relevance of articles.
