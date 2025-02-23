@@ -33,8 +33,8 @@ docker-compose up -d
         tts.tts_to_file(text="Findings show a fractured humerus.", file_path="output.wav")
         ```
 3. Web based search
-    - Use search API (e.g. DuckDuckGo, SearXNG, Google PSE, Brave Search). More documentation can be found [here](https://docs.openwebui.com/category/-web-search).
-        - Create Brave account and create an API key
+    - Use search API (e.g. DuckDuckGo, [SearXNG](https://docs.openwebui.com/tutorials/web-search/searxng), Google PSE, Brave Search). More documentation can be found [here](https://docs.openwebui.com/category/-web-search).
+        - Create Brave account and create an API key. In your project root, create a file named .env containing your Brave API key. Docker Compose will automatically load variables from this file.
     - Implementation:
         Build a tool that accepts a query and then calls the chosen API to return a summary of results.
         Optionally, add a semantic search layer using sentence embeddings (e.g., with Hugging Face’s transformers) to better rank the relevance of articles.
