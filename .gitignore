@@ -2,6 +2,7 @@ flashcard_game/math_leaderboard.json
 flashcard_game/leaderboard.json
 
 open_web_ui/.env
+open_web_ui/.env.searxng
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
