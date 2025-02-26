@@ -65,3 +65,10 @@ docker-compose up -d
         model = monai.networks.nets.DenseNet121(spatial_dims=2, in_channels=1, out_channels=2)
         # Load DICOM images with pydicom and preprocess
         ```
+
+## Using custom data for RAG based search 
+
+Here we will look at an example using pubmed based search. For this to work we will need to dynamically use the user chat query. This can be done in open web UI with a custom pipeline. Here are some useful resources:
+[Open web UI pipelines](https://docs.openwebui.com/pipelines/)
+[RAG pipeline example](https://github.com/open-webui/pipelines/blob/main/examples/pipelines/rag/llamaindex_pipeline.py)
+[Open web UI functions](https://docs.openwebui.com/features/plugin/functions/)
