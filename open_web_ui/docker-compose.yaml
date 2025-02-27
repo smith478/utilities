@@ -2,17 +2,15 @@ version: "3.8"
 
 services:
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    build: .
     ports:
       - "3000:8080"
     environment:
-      ENABLE_RAG_WEB_SEARCH: "True"
-      RAG_WEB_SEARCH_ENGINE: "brave"
-      BRAVE_SEARCH_API_KEY: "${BRAVE_SEARCH_API_KEY}"
-      RAG_WEB_SEARCH_RESULT_COUNT: "3"
-      RAG_WEB_SEARCH_CONCURRENT_REQUESTS: "1"
+      LLAMAINDEX_MODEL_NAME: "llama3.2"  # Default model
+      LLAMAINDEX_EMBEDDING_MODEL_NAME: "nomic-embed-text" # bge-large or granite-embedding
     volumes:
       - open-webui:/app/backend/data
+      - ./pubmed_rag.py:/app/backend/pipelines/pubmed_rag.py  # Mount custom pipeline
 
 volumes:
   open-webui:

@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    ports:
+      - "3000:8080"
+    environment:
+      ENABLE_RAG_WEB_SEARCH: "True"
+      RAG_WEB_SEARCH_ENGINE: "brave"
+      BRAVE_SEARCH_API_KEY: "${BRAVE_SEARCH_API_KEY}"
+      RAG_WEB_SEARCH_RESULT_COUNT: "3"
+      RAG_WEB_SEARCH_CONCURRENT_REQUESTS: "1"
+    volumes:
+      - open-webui:/app/backend/data
+
+volumes:
+  open-webui:
