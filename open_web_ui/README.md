@@ -77,3 +77,11 @@ To run a standalone test on the RAG pipeline
 ```bash
 DEBUG=1 python test_pubmed_rag.py
 ```
+
+To get it configured within Open Webui:
+- Go to Settings → Connections (be sure to do this in the admin settings in the OpenAI API connections)
+    - Add new connection:
+    - API URL: http://pipelines:9099
+    - API Key: 0p3n-w3bu!
+- Select "PubMed Ollama RAG Pipeline"
+- The RAG pipeline will now be available as a drop down option under the available models

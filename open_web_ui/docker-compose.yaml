@@ -6,11 +6,33 @@ services:
     ports:
       - "3000:8080"
     environment:
-      LLAMAINDEX_MODEL_NAME: "llama3.2"  # Default model
-      LLAMAINDEX_EMBEDDING_MODEL_NAME: "nomic-embed-text" # bge-large or granite-embedding
+      - OLLAMA_API_BASE_URL=http://ollama:11434
+    depends_on:
+      - ollama
+      - pipelines
     volumes:
       - open-webui:/app/backend/data
-      - ./pubmed_rag.py:/app/backend/pipelines/pubmed_rag.py  # Mount custom pipeline
+
+  pipelines:
+    image: ghcr.io/open-webui/pipelines:main
+    ports:
+      - "9099:9099"
+    volumes:
+      - ./pubmed_rag.py:/app/pipelines/pubmed_rag.py
+      - ./requirements.txt:/app/requirements.txt
+    environment:
+      - PIPELINES_REQUIREMENTS_PATH=/app/requirements.txt
+      - PIPELINES_ALLOW_LOCAL_INSTALL=true
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
 
 volumes:
   open-webui:
+  ollama:

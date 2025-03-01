@@ -4,4 +4,6 @@ RUN pip install \
     llama-index \
     llama-index-llms-ollama \
     llama-index-embeddings-ollama \
-    langchain-community
+    langchain-community \
+    python-dotenv \
+    xmltodict
