@@ -3,3 +3,4 @@ llama-index-llms-ollama
 llama-index-embeddings-ollama
 langchain-community
 python-dotenv
+xmltodict

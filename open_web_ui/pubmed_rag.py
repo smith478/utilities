@@ -1,7 +1,6 @@
-from typing import List, Union, Generator, Iterator
-from schemas import OpenAIChatMessage
-import os
+from typing import Union, Generator, Iterator
 from pydantic import BaseModel
+from llama_index.core import Settings
 
 class Pipeline:
 
@@ -13,49 +12,57 @@ class Pipeline:
     def __init__(self):
         self.valves = self.Valves(
             **{
-                "LLAMAINDEX_OLLAMA_BASE_URL": os.getenv("LLAMAINDEX_OLLAMA_BASE_URL", "http://localhost:11434"),
-                "LLAMAINDEX_MODEL_NAME": os.getenv("LLAMAINDEX_MODEL_NAME", "llama3.2"),
-                "LLAMAINDEX_EMBEDDING_MODEL_NAME": os.getenv("LLAMAINDEX_EMBEDDING_MODEL_NAME", "nomic-embed-text"),
+                "LLAMAINDEX_OLLAMA_BASE_URL": "http://localhost:11434",
+                "LLAMAINDEX_MODEL_NAME": "llama3.2", # "phi4-mini"
+                "LLAMAINDEX_EMBEDDING_MODEL_NAME": "nomic-embed-text",
             }
         )
+        self.embed_model = None
+        self.llm = None
 
     async def on_startup(self):
         from llama_index.embeddings.ollama import OllamaEmbedding
         from llama_index.llms.ollama import Ollama
-        from llama_index.core import Settings
 
-        Settings.embed_model = OllamaEmbedding(
+        # Initialize and store components
+        self.embed_model = OllamaEmbedding(
             model_name=self.valves.LLAMAINDEX_EMBEDDING_MODEL_NAME,
-            base_url=self.valves.LLAMAINDEX_OLLAMA_BASE_URL,
+            base_url=self.valves.LLAMAINDEX_OLLAMA_BASE_URL
         )
-        Settings.llm = Ollama(
+        self.llm = Ollama(
             model=self.valves.LLAMAINDEX_MODEL_NAME,
-            base_url=self.valves.LLAMAINDEX_OLLAMA_BASE_URL,
+            base_url=self.valves.LLAMAINDEX_OLLAMA_BASE_URL
         )
 
-    async def on_shutdown(self):
-        pass
+        # Configure global settings
+        Settings.embed_model = self.embed_model
+        Settings.llm = self.llm
 
-    def pipe(
-        self, user_message: str, model_id: str, messages: List[dict], body: dict
-    ) -> Union[str, Generator, Iterator]:
+    def query(self, user_message: str) -> Union[str, Generator, Iterator]:
         from langchain_community.document_loaders import PubMedLoader
         from llama_index.core import VectorStoreIndex
         from llama_index.core.schema import Document as LlamaindexDocument
 
-        # Load PubMed documents
         loader = PubMedLoader(query=user_message, load_max_docs=3)
         langchain_docs = loader.load()
 
-        # Convert to LlamaIndex documents
         llama_docs = [LlamaindexDocument(
             text=doc.page_content,
             metadata=doc.metadata
         ) for doc in langchain_docs]
 
-        # Create and query index
-        index = VectorStoreIndex.from_documents(llama_docs)
-        query_engine = index.as_query_engine(streaming=True)
-        response = query_engine.query(user_message)
+        # Create index with explicit components
+        index = VectorStoreIndex.from_documents(
+            llama_docs,
+            embed_model=self.embed_model,
+            llm=self.llm
+        )
 
+        query_engine = index.as_query_engine(
+            streaming=True,
+            llm=self.llm,
+            embed_model=self.embed_model
+        )
+
+        response = query_engine.query(user_message)
         return response.response_gen

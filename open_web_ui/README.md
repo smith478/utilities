@@ -72,3 +72,8 @@ Here we will look at an example using pubmed based search. For this to work we w
 [Open web UI pipelines](https://docs.openwebui.com/pipelines/)
 [RAG pipeline example](https://github.com/open-webui/pipelines/blob/main/examples/pipelines/rag/llamaindex_pipeline.py)
 [Open web UI functions](https://docs.openwebui.com/features/plugin/functions/)
+
+To run a standalone test on the RAG pipeline
+```bash
+DEBUG=1 python test_pubmed_rag.py
+```
