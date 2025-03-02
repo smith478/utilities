@@ -1,6 +1,12 @@
+biopython
+certifi
 llama-index
 llama-index-llms-ollama
 llama-index-embeddings-ollama
 langchain-community
+pyOpenSSL
 python-dotenv
+requests
+tenacity
+urllib3
 xmltodict

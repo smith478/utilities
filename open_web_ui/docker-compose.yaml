@@ -23,16 +23,27 @@ services:
     environment:
       - PIPELINES_REQUIREMENTS_PATH=/app/requirements.txt
       - PIPELINES_ALLOW_LOCAL_INSTALL=true
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - PYTHONUNBUFFERED=1
+      - PUBMED_IP=130.14.29.110
     depends_on:
       - ollama
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    extra_hosts:
+      - "pubmed.ncbi.nlm.nih.gov:130.14.29.110"
 
   ollama:
     image: ollama/ollama
     ports:
       - "11434:11434"
     volumes:
-      - ollama:/root/.ollama
+      - ~/.ollama/models:/root/.ollama/models
+      - ollama_config:/root/.ollama/config
+      - ollama_runtime:/root/.ollama/runtime
 
 volumes:
   open-webui:
-  ollama:
+  ollama_config:
+  ollama_runtime:
