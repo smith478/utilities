@@ -1,0 +1,44 @@
+[tool.poe.tasks]
+start = { cmd = "docker-compose up -d", help = "Start all services in detached mode" }
+stop = { cmd = "docker-compose down", help = "Stop and remove all containers" }
+restart = { cmd = "docker-compose restart", help = "Restart all running services" }
+rebuild = { 
+    cmd = "docker-compose up -d --build",
+    help = "Rebuild and restart containers",
+    args = ["service"],
+    help_args = "Optional service name to rebuild"
+}
+logs = {
+    cmd = "docker-compose logs -f --tail=100",
+    help = "View service logs",
+    args = ["service"],
+    help_args = "Optional service name to view logs for"
+}
+wipe = {
+    cmd = "docker-compose down -v --rmi all --remove-orphans",
+    help = "Stop and remove all containers, volumes, and images"
+}
+healthcheck = {
+    cmd = "curl -s http://localhost:8000/health | jq",
+    help = "Check transcription service health"
+}
+dev = {
+    cmd = "docker-compose up",
+    help = "Start services in foreground with live logs"
+}
+shell = {
+    cmd = "docker-compose exec open-webui /bin/bash",
+    help = "Open shell in open-webui container"
+}
+
+[tool.poe.tasks.transcription]
+start = { cmd = "docker-compose up -d transcription-service", help = "Start just transcription service" }
+stop = { cmd = "docker-compose stop transcription-service", help = "Stop transcription service" }
+restart = { cmd = "docker-compose restart transcription-service", help = "Restart transcription service" }
+logs = { cmd = "docker-compose logs -f --tail=100 transcription-service", help = "View transcription service logs" }
+
+[tool.poe.tasks.ollama]
+start = { cmd = "docker-compose up -d ollama", help = "Start just Ollama service" }
+stop = { cmd = "docker-compose stop ollama", help = "Stop Ollama service" }
+restart = { cmd = "docker-compose restart ollama", help = "Restart Ollama service" }
+logs = { cmd = "docker-compose logs -f --tail=100 ollama", help = "View Ollama logs" }

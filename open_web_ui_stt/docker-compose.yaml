@@ -1,25 +1,48 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  openwebui:
-    image: ghcr.io/open-webui/open-webui:latest
-    container_name: openwebui
-    restart: unless-stopped
+  open-webui:
+    build: ./open-webui
     ports:
       - "3000:8080"
     environment:
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-      - WEBUI_AUTH_ENABLED=false
+      - OLLAMA_API_BASE_URL=http://ollama:11434
+      - STT_ENGINE=custom
+      - CUSTOM_STT_ENDPOINT=http://transcription-service:8000
+      - ENABLE_CUSTOM_STT=true
+    depends_on:
+      - ollama
+      - transcription-service
     volumes:
-      - openwebui-data:/app/backend/data
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - openwebui-network
+      - ./custom_stt_patch.py:/app/backend/open_webui/custom_stt_patch.py
+      - open-webui:/app/backend/data
 
-networks:
-  openwebui-network:
-    driver: bridge
+  transcription-service:
+    build: ./transcription-service
+    ports:
+      - "8000:8000"
+    environment:
+      - ASR_MODEL_ID=openai/whisper-large-v3
+      - ASR_CHUNK_LENGTH=5
+      - ASR_STRIDE_LENGTH=1
+    volumes:
+      - transcription-cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
 
 volumes:
-  openwebui-data:
+  open-webui:
+  ollama-data:
+  transcription-cache:
