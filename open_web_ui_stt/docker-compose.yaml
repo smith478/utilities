@@ -1,48 +1,9 @@
-version: "3.8"
-
 services:
-  open-webui:
-    build: ./open-webui
-    ports:
-      - "3000:8080"
-    environment:
-      - OLLAMA_API_BASE_URL=http://ollama:11434
-      - STT_ENGINE=custom
-      - CUSTOM_STT_ENDPOINT=http://transcription-service:8000
-      - ENABLE_CUSTOM_STT=true
-    depends_on:
-      - ollama
-      - transcription-service
-    volumes:
-      - ./custom_stt_patch.py:/app/backend/open_webui/custom_stt_patch.py
-      - open-webui:/app/backend/data
-
   transcription-service:
     build: ./transcription-service
-    ports:
-      - "8000:8000"
     environment:
       - ASR_MODEL_ID=openai/whisper-large-v3
-      - ASR_CHUNK_LENGTH=5
-      - ASR_STRIDE_LENGTH=1
+      - ASR_MODEL_PATH=/models  # Mount point in container
     volumes:
-      - transcription-cache:/root/.cache/huggingface
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
-  ollama:
-    image: ollama/ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-data:/root/.ollama
-
-volumes:
-  open-webui:
-  ollama-data:
-  transcription-cache:
+      - ./models:/models  # Map local models to container
+      - ./models:/root/.cache/huggingface/hub  # Optional: cache models

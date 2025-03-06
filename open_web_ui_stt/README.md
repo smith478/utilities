@@ -36,3 +36,54 @@ curl http://localhost:8000/health
 # Test batch transcription
 curl -X POST -F "file=@audio.wav" http://localhost:8000/transcribe
 ```
+
+## Transcription service
+
+Usage Instructions:
+
+Download Models:
+```bash
+# Download a model
+python3 model-manager.py download openai/whisper-large-v3
+
+# Download different model
+python3 model-manager.py download facebook/wav2vec2-large-960h-lv60-self
+```
+
+List Local Models:
+```bash
+python3 model-manager.py list
+```
+
+Run with Docker:
+```bash
+# Start services using local models
+docker-compose up -d
+```
+
+Key Features:
+Models stored in `./models` directory (easy to manage/backup)
+Avoids redundant downloads
+Supports both local and remote models
+Clear model organization
+Automatic fallback to download if model missing
+Version control friendly
+
+Directory Structure After Use:
+.
+├── models
+│   ├── openai_whisper-large-v3
+│   │   ├── config.json
+│   │   └── pytorch_model.bin
+│   └── facebook_wav2vec2-large-960h-lv60-self
+│       ├── config.json
+│       └── pytorch_model.bin
+├── docker-compose.yml
+├── model-manager.py
+└── transcription-service
+    └── transcription_server.py
+
+To Switch Models:
+Stop services: `docker-compose stop transcription-service`
+Update ASR_MODEL_ID in docker-compose.yml
+Restart: `docker-compose up -d`
