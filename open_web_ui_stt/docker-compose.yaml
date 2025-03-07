@@ -2,8 +2,10 @@ services:
   transcription-service:
     build: ./transcription-service
     environment:
-      - ASR_MODEL_ID=openai/whisper-large-v3
+      - ASR_MODEL_ID=Systran/faster-whisper-tiny
       - ASR_MODEL_PATH=/models  # Mount point in container
+      - ASR_CHUNK_LENGTH=5
+      - ASR_STRIDE_LENGTH=1
     volumes:
       - ./models:/models  # Map local models to container
       - ./models:/root/.cache/huggingface/hub  # Optional: cache models

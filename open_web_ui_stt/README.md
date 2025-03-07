@@ -71,17 +71,13 @@ Version control friendly
 
 Directory Structure After Use:
 .
-├── models
-│   ├── openai_whisper-large-v3
-│   │   ├── config.json
-│   │   └── pytorch_model.bin
-│   └── facebook_wav2vec2-large-960h-lv60-self
-│       ├── config.json
-│       └── pytorch_model.bin
-├── docker-compose.yml
-├── model-manager.py
-└── transcription-service
-    └── transcription_server.py
+├── models/                              
+├── transcription-service/               
+│   ├── Dockerfile                       
+│   └── transcription_server.py          
+├── docker-compose.yml                   
+├── model-manager.py                     
+└── custom_stt_patch.py 
 
 To Switch Models:
 Stop services: `docker-compose stop transcription-service`
