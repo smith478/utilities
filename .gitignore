@@ -1,3 +1,5 @@
+open_web_ui_stt/models/*
+
 flashcard_game/math_leaderboard.json
 flashcard_game/leaderboard.json
 
