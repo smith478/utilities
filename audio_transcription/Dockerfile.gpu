@@ -1,0 +1,35 @@
+# Dockerfile for Linux with 3090Ti GPU
+FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
+
+WORKDIR /app
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    python3.10-dev \
+    git \
+    ffmpeg \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python alias
+RUN ln -sf /usr/bin/python3.10 /usr/bin/python
+
+# Copy requirements file
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY model_downloader.py audio_transcriber.py streamlit_app.py ./
+
+# Expose port for Streamlit
+EXPOSE 8501
+
+# Command to run the Streamlit app
+CMD ["streamlit", "run", "streamlit_app.py", "--server.address=0.0.0.0"]
