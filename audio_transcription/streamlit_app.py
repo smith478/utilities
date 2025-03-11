@@ -6,13 +6,29 @@ from audio_transcriber import transcribe_audio
 
 st.set_page_config(page_title="Phi-4 Audio Transcription", page_icon="🎤")
 
+# Determine cache directory based on environment
+def get_cache_dir():
+    """Get the appropriate Hugging Face cache directory, respecting environment variables"""
+    # Check for environment variable (set in Docker)
+    env_cache_dir = os.environ.get("HF_HOME") or os.environ.get("TRANSFORMERS_CACHE")
+    if env_cache_dir:
+        return env_cache_dir
+    
+    # Default cache directory
+    return os.path.expanduser("~/.cache/huggingface")
+
 @st.cache_resource
 def load_model():
     """Load the Phi-4 model with caching to avoid reloading"""
-    return download_phi4_model()
+    cache_dir = get_cache_dir()
+    return download_phi4_model(local_cache_dir=cache_dir)
 
 st.title("Phi-4 Audio Transcription")
 st.write("Upload an audio file to transcribe it using Microsoft's Phi-4 multimodal model.")
+
+# Display cache information
+cache_dir = get_cache_dir()
+st.info(f"Using Hugging Face cache: {cache_dir}")
 
 # Model loading status
 with st.spinner("Loading Phi-4 model... This might take a few minutes."):

@@ -10,9 +10,10 @@ services:
       - "8501:8501"
     volumes:
       - .:/app
-      - phi4-model-cache:/root/.cache/huggingface
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
     environment:
       - PYTHONUNBUFFERED=1
+      - HF_HOME=/root/.cache/huggingface
 
   # GPU Version (for Linux with 3090Ti)
   phi4-gpu:
@@ -23,9 +24,10 @@ services:
       - "8501:8501"
     volumes:
       - .:/app
-      - phi4-model-cache:/root/.cache/huggingface
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
     environment:
       - PYTHONUNBUFFERED=1
+      - HF_HOME=/root/.cache/huggingface
     deploy:
       resources:
         reservations:
@@ -33,6 +35,3 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-
-volumes:
-  phi4-model-cache:

@@ -18,8 +18,17 @@ def download_phi4_model(local_cache_dir=None, device="auto"):
     tuple
         (model, processor, generation_config) - The loaded model components
     """
-    print(f"Downloading and caching Phi-4-multimodal-instruct model...")
+    print(f"Loading Phi-4-multimodal-instruct model...")
     model_path = "microsoft/Phi-4-multimodal-instruct"
+    
+    # Use explicit cache directory if provided, otherwise use default
+    if local_cache_dir:
+        os.makedirs(local_cache_dir, exist_ok=True)
+        print(f"Using custom cache directory: {local_cache_dir}")
+    else:
+        # Get default HF cache location for informational purposes
+        default_cache = os.path.expanduser("~/.cache/huggingface")
+        print(f"Using default Hugging Face cache directory: {default_cache}")
     
     # Determine device map
     if device == "auto":
@@ -43,6 +52,7 @@ def download_phi4_model(local_cache_dir=None, device="auto"):
     else:
         attn_implementation = "eager"
     
+    print(f"Downloading/loading processor from {model_path}")
     # Load processor
     processor = AutoProcessor.from_pretrained(
         model_path, 
@@ -50,6 +60,7 @@ def download_phi4_model(local_cache_dir=None, device="auto"):
         cache_dir=local_cache_dir
     )
     
+    print(f"Downloading/loading model from {model_path}")
     # Load model
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
@@ -60,6 +71,7 @@ def download_phi4_model(local_cache_dir=None, device="auto"):
         cache_dir=local_cache_dir
     )
     
+    print(f"Downloading/loading generation config from {model_path}")
     # Load generation config
     generation_config = GenerationConfig.from_pretrained(
         model_path,

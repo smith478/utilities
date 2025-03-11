@@ -1,20 +1,57 @@
 # Phi-4 Multimodal Audio Transcription Setup
 
-This guide explains how to set up and use the Phi-4 multimodal model for audio transcription on both M1 MacBook Pro (CPU) and Linux with 3090Ti GPU.
+This guide explains how to set up and use the Phi-4 multimodal model for audio transcription efficiently by sharing the model cache between your host system and Docker containers.
 
-## Files Overview
+## Updated Approach
 
-- `model_downloader.py`: Utility to download and cache the model
-- `audio_transcriber.py`: Core transcription functionality
-- `streamlit_app.py`: Web interface for audio upload and transcription
-- `Dockerfile.cpu`: Docker configuration for M1 MacBook
-- `Dockerfile.gpu`: Docker configuration for Linux with GPU
-- `requirements.txt`: Python dependencies
-- `docker-compose.yml`: Orchestration for both environments
+The key improvement in this setup is that the model is downloaded **once** to your host machine's Hugging Face cache directory (`~/.cache/huggingface`), and then Docker containers mount this directory to avoid re-downloading.
 
-## Setup Instructions
+## Step 1: Download the Model to Host Machine
 
-### Option 1: Direct Python Installation
+Before running Docker, download the model to your host machine:
+
+```bash
+# Make the script executable
+chmod +x download_model.sh
+
+# Run the download script
+./download_model.sh
+```
+
+This will download the Phi-4 model (~10GB) to your host machine's default Hugging Face cache directory.
+
+## Step 2: Run the Appropriate Docker Container
+
+Use the provided run script to automatically detect your environment and start the appropriate Docker container:
+
+```bash
+# Make the script executable
+chmod +x run.sh
+
+# Run the script
+./run.sh
+```
+
+The script will:
+1. Detect if you're on an M1 Mac or have an NVIDIA GPU
+2. Ask for confirmation or allow you to override
+3. Start the appropriate container using docker-compose
+
+## Manual Docker Compose Usage
+
+If you prefer to run commands manually:
+
+```bash
+# For M1 MacBook
+docker-compose up phi4-cpu
+
+# For Linux with GPU
+docker-compose up phi4-gpu
+```
+
+## Direct Python Installation (No Docker)
+
+If you prefer to run without Docker:
 
 1. Create a new directory and save all the provided files
 2. Install the requirements:
@@ -26,82 +63,30 @@ This guide explains how to set up and use the Phi-4 multimodal model for audio t
    streamlit run streamlit_app.py
    ```
 
-### Option 2: Docker Setup for M1 MacBook
+## File Structure
 
-1. Create a new directory and save all the provided files
-2. Rename `Dockerfile.cpu` to `Dockerfile`
-3. Build and run the Docker container:
-   ```bash
-   docker build -t phi4-mac .
-   docker run -p 8501:8501 -v $(pwd):/app phi4-mac
-   ```
-4. Access the application at http://localhost:8501
-
-### Option 3: Docker Setup for Linux with 3090Ti GPU
-
-1. Create a new directory and save all the provided files
-2. Rename `Dockerfile.gpu` to `Dockerfile`
-3. Ensure NVIDIA Docker runtime is installed:
-   ```bash
-   # Install NVIDIA Container Toolkit
-   distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-   curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-   curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
-   sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
-   sudo systemctl restart docker
-   ```
-4. Build and run the Docker container:
-   ```bash
-   docker build -t phi4-gpu .
-   docker run --gpus all -p 8501:8501 -v $(pwd):/app phi4-gpu
-   ```
-5. Access the application at http://localhost:8501
-
-### Option 4: Using Docker Compose
-
-For easier management of both environments:
-
-```bash
-# For M1 MacBook
-docker-compose up phi4-cpu
-
-# For Linux with GPU
-docker-compose up phi4-gpu
+```
+project/
+├── model_downloader.py        # Utility to download and cache the model
+├── audio_transcriber.py       # Core transcription functionality
+├── streamlit_app.py           # Web interface
+├── Dockerfile.cpu             # Docker configuration for M1 MacBook
+├── Dockerfile.gpu             # Docker configuration for Linux with GPU
+├── requirements.txt           # Python dependencies
+├── docker-compose.yml         # Docker configuration with volume mounts
+├── download_model.sh          # Script to download model to host
+└── run.sh                     # Script to run the appropriate container
 ```
 
-## Jupyter Notebook Usage
+## How the Caching Works
 
-If you prefer using a Jupyter notebook:
-
-1. Install the requirements
-2. Start Jupyter:
-   ```bash
-   jupyter notebook
-   ```
-3. Create a new notebook and import the utility functions:
-   ```python
-   from model_downloader import download_phi4_model
-   from audio_transcriber import transcribe_audio
-   
-   # Load the model
-   model, processor, generation_config = download_phi4_model()
-   
-   # Transcribe audio
-   transcription = transcribe_audio("path/to/your/audio.mp3", model, processor, generation_config)
-   print(transcription)
-   ```
-
-## Command Line Usage
-
-You can also use the transcriber directly from the command line:
-
-```bash
-python audio_transcriber.py path/to/your/audio.mp3
-```
+1. The `download_model.sh` script downloads the model to your host's `~/.cache/huggingface` directory
+2. The docker-compose.yml mounts this directory to `/root/.cache/huggingface` in the container
+3. The application looks for the model in this cache directory first before downloading
 
 ## Important Notes
 
-- First-time model download will take significant time (~10 GB)
-- For optimal performance on the GPU, the container uses CUDA 12.1 with cuDNN 8
-- The M1 version uses CPU mode, which will be slower but still functional
-- Model cache is preserved across container restarts using Docker volumes
+- The M1 version uses CPU/MPS mode, which will be slower but still functional
+- The Linux version with 3090Ti uses CUDA for maximum performance
+- The model is about 10GB in size, so ensure you have enough disk space
+- If you update to a newer version of the model, you may need to clear the cache
