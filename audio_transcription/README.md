@@ -1,67 +1,72 @@
 # Phi-4 Multimodal Audio Transcription Setup
 
-This guide explains how to set up and use the Phi-4 multimodal model for audio transcription efficiently by sharing the model cache between your host system and Docker containers.
+This guide explains how to set up and use the Phi-4 multimodal model for audio transcription with an interactive Docker workflow.
 
-## Updated Approach
+## Workflow Overview
 
-The key improvement in this setup is that the model is downloaded **once** to your host machine's Hugging Face cache directory (`~/.cache/huggingface`), and then Docker containers mount this directory to avoid re-downloading.
+This setup:
+1. Uses a Docker container as an interactive development environment
+2. Mounts your local project directory to the container
+3. Shares the HuggingFace cache between host and container 
+4. Allows running Streamlit or Jupyter from within the container
 
-## Step 1: Download the Model to Host Machine
+## Step 1: Build the Docker Image
 
-Before running Docker, download the model to your host machine:
+First, build the Docker image:
 
 ```bash
 # Make the script executable
-chmod +x download_model.sh
+chmod +x build.sh
 
-# Run the download script
-./download_model.sh
+# Build the image
+./build.sh
 ```
 
-This will download the Phi-4 model (~10GB) to your host machine's default Hugging Face cache directory.
+## Step 2: Run the Docker Container
 
-## Step 2: Run the Appropriate Docker Container
-
-Use the provided run script to automatically detect your environment and start the appropriate Docker container:
+Launch the interactive container:
 
 ```bash
 # Make the script executable
 chmod +x run.sh
 
-# Run the script
+# Run the container
 ./run.sh
 ```
 
-The script will:
-1. Detect if you're on an M1 Mac or have an NVIDIA GPU
-2. Ask for confirmation or allow you to override
-3. Start the appropriate container using docker-compose
+This will:
+- Start an interactive bash shell in the container
+- Mount your current directory to /phi4-audio-transcriber in the container
+- Mount your HuggingFace cache (~/.cache/huggingface) to the container
+- Map ports for Streamlit (8501) and Jupyter (8888)
 
-## Manual Docker Compose Usage
+## Step 3: Download Model (Inside the Container)
 
-If you prefer to run commands manually:
+Once inside the container, you can download the model:
 
 ```bash
-# For M1 MacBook
-docker-compose up phi4-cpu
+# Make the script executable
+chmod +x download_model.sh
 
-# For Linux with GPU
-docker-compose up phi4-gpu
+# Download the model
+./download_model.sh
 ```
 
-## Direct Python Installation (No Docker)
+The model will be downloaded to the shared HuggingFace cache directory.
 
-If you prefer to run without Docker:
+## Step 4: Run Applications (Inside the Container)
 
-1. Create a new directory and save all the provided files
-2. Install the requirements:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run the Streamlit app:
-   ```bash
-   streamlit run streamlit_app.py
-   ```
+### Run Streamlit App
+```bash
+streamlit run streamlit_app.py
+```
+Access from host: http://localhost:8501
+
+### Run Jupyter Lab
+```bash
+jupyter lab --ip 0.0.0.0 --no-browser --allow-root --NotebookApp.token=''
+```
+Access from host: http://localhost:8888
 
 ## File Structure
 
@@ -70,23 +75,22 @@ project/
 ├── model_downloader.py        # Utility to download and cache the model
 ├── audio_transcriber.py       # Core transcription functionality
 ├── streamlit_app.py           # Web interface
-├── Dockerfile.cpu             # Docker configuration for M1 MacBook
-├── Dockerfile.gpu             # Docker configuration for Linux with GPU
+├── Dockerfile                 # Docker configuration
 ├── requirements.txt           # Python dependencies
-├── docker-compose.yml         # Docker configuration with volume mounts
-├── download_model.sh          # Script to download model to host
-└── run.sh                     # Script to run the appropriate container
+├── build.sh                   # Script to build the Docker image
+├── run.sh                     # Script to run the container
+└── download_model.sh          # Script to download model inside container
 ```
 
 ## How the Caching Works
 
-1. The `download_model.sh` script downloads the model to your host's `~/.cache/huggingface` directory
-2. The docker-compose.yml mounts this directory to `/root/.cache/huggingface` in the container
-3. The application looks for the model in this cache directory first before downloading
+1. The ~/.cache/huggingface directory on your host is mounted to /root/.cache/huggingface in the container
+2. When you download the model inside the container, it's stored in the shared cache
+3. Any other containers can use the same cache to avoid re-downloading
+4. Your host applications can also use the same cached models
 
 ## Important Notes
 
-- The M1 version uses CPU/MPS mode, which will be slower but still functional
-- The Linux version with 3090Ti uses CUDA for maximum performance
+- GPU acceleration works automatically if NVIDIA drivers and Docker GPU support are properly configured
 - The model is about 10GB in size, so ensure you have enough disk space
-- If you update to a newer version of the model, you may need to clear the cache
+- All changes to files in the mounted directory are reflected on your host system

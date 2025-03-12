@@ -1,47 +1,26 @@
 #!/bin/bash
 
-# Script to run the appropriate Docker container based on the environment
-
-# Detect the platform
-if [[ "$(uname -m)" == "arm64" ]]; then
-    echo "Detected M1 Mac (arm64 architecture)"
-    ENV="mac"
-elif [[ "$(lspci | grep -i nvidia)" != "" ]]; then
-    echo "Detected NVIDIA GPU"
-    ENV="gpu"
+# Check if we have an NVIDIA GPU
+if command -v nvidia-smi &> /dev/null
+then
+    echo "NVIDIA GPU detected. Using GPU container."
+    GPU_FLAG="--gpus all"
 else
-    echo "No specific hardware detected, defaulting to CPU"
-    ENV="cpu"
+    echo "No NVIDIA GPU detected. Using CPU container."
+    GPU_FLAG=""
 fi
 
-# Ask for confirmation or allow override
-read -p "Run for environment [$ENV]? (Enter to confirm, or type 'mac'/'gpu'/'cpu'): " response
-if [[ ! -z "$response" ]]; then
-    ENV=$response
-fi
+# Create the HuggingFace cache directory if it doesn't exist
+HF_CACHE_DIR="$HOME/.cache/huggingface"
+mkdir -p $HF_CACHE_DIR
 
-# Make sure Docker is running
-if ! docker info > /dev/null 2>&1; then
-    echo "Docker is not running. Please start Docker and try again."
-    exit 1
-fi
-
-# Build and run the appropriate container
-case $ENV in
-    mac|cpu)
-        echo "Building and running for CPU/Mac environment..."
-        docker-compose up phi4-cpu
-        ;;
-    gpu)
-        echo "Building and running for GPU environment..."
-        # Check for nvidia-smi
-        if ! command -v nvidia-smi &> /dev/null; then
-            echo "Warning: nvidia-smi not found. Make sure NVIDIA drivers are installed."
-        fi
-        docker-compose up phi4-gpu
-        ;;
-    *)
-        echo "Invalid environment: $ENV"
-        exit 1
-        ;;
-esac
+# Run the Docker container with interactive shell
+# Mount the HuggingFace cache directory and the current directory
+docker run $GPU_FLAG \
+    --name phi4-audio-transcriber \
+    -it --rm \
+    -p 8501:8501 \
+    -p 8888:8888 \
+    -v $HF_CACHE_DIR:/root/.cache/huggingface \
+    -v $(pwd):/phi4-audio-transcriber \
+    phi4-audio-transcriber:latest

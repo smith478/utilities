@@ -1,7 +1,7 @@
-# Dockerfile for Linux with 3090Ti GPU
+# Use NVIDIA CUDA base image
 FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
 
-WORKDIR /app
+WORKDIR /phi4-audio-transcriber
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     git \
     ffmpeg \
     libsndfile1 \
+    jupyter \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Python alias
@@ -28,8 +29,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY model_downloader.py audio_transcriber.py streamlit_app.py ./
 
-# Expose port for Streamlit
+# Expose ports for Streamlit and Jupyter
 EXPOSE 8501
+EXPOSE 8888
 
-# Command to run the Streamlit app
-CMD ["streamlit", "run", "streamlit_app.py", "--server.address=0.0.0.0"]
+# Set default entrypoint to bash to allow interactive use
+ENTRYPOINT ["/bin/bash"]
