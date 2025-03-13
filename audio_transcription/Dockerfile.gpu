@@ -1,5 +1,5 @@
 # Use NVIDIA CUDA base image
-FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04
 
 WORKDIR /phi4-audio-transcriber
 
@@ -27,7 +27,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY model_downloader.py audio_transcriber.py streamlit_app.py ./
+COPY model_download.py audio_transcriber.py streamlit_app.py ./
 
 # Expose ports for Streamlit and Jupyter
 EXPOSE 8501

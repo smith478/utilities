@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Check if we have an NVIDIA GPU
-if command -v nvidia-smi &> /dev/null
+# Improved check for working NVIDIA GPU setup
+if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null
 then
-    echo "NVIDIA GPU detected. Using GPU container."
+    echo "NVIDIA GPU detected and accessible. Using GPU container."
     GPU_FLAG="--gpus all"
 else
-    echo "No NVIDIA GPU detected. Using CPU container."
+    echo "No working NVIDIA GPU setup detected. Using CPU container."
     GPU_FLAG=""
 fi
 

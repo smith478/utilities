@@ -10,6 +10,33 @@ This setup:
 3. Shares the HuggingFace cache between host and container 
 4. Allows running Streamlit or Jupyter from within the container
 
+## Prerequisite: Install the NVIDIA Container Toolkit:
+
+```bash
+# Install dependencies
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+
+# Add NVIDIA repo
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /etc/apt/keyrings/nvidia.gpg
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+    sed 's#deb https://#deb [signed-by=/etc/apt/keyrings/nvidia.gpg] https://#g' | \
+    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+# Update and install
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit
+
+# Configure the Docker daemon
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+```
+Test the NVIDIA Container Toolkit:
+```bash
+sudo docker run --rm --gpus all nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04 nvidia-smi
+```
+
 ## Step 1: Build the Docker Image
 
 First, build the Docker image:
