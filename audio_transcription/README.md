@@ -34,7 +34,7 @@ sudo systemctl restart docker
 ```
 Test the NVIDIA Container Toolkit:
 ```bash
-sudo docker run --rm --gpus all nvidia/cuda:12.8.0-cudnn-devel-ubuntu22.04 nvidia-smi
+sudo docker run --rm --gpus all nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04 nvidia-smi
 ```
 
 ## Step 1: Build the Docker Image
