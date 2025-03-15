@@ -14,3 +14,4 @@ bitsandbytes>=0.39.0
 streamlit>=1.30.0
 ipywidgets>=8.0.0
 jupyter>=1.0.0
+flash-attn

@@ -20,12 +20,12 @@ RUN apt-get update && apt-get install -y \
 # Set Python alias
 RUN ln -sf /usr/bin/python3.10 /usr/bin/python
 
-# Copy requirements file
+# Install torch and its related packages first
+RUN pip install torch>=2.2.0 torchvision>=0.17.0 torchaudio>=2.2.0
+
+# Then install the rest of the dependencies, including flash-attn
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-
 # Copy application code
 COPY model_download.py audio_transcriber.py streamlit_app.py ./
 

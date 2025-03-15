@@ -46,7 +46,7 @@ First, build the Docker image:
 chmod +x build.sh
 
 # Build the image
-./build.sh
+sudo ./build.sh
 ```
 
 ## Step 2: Run the Docker Container
@@ -58,7 +58,7 @@ Launch the interactive container:
 chmod +x run.sh
 
 # Run the container
-./run.sh
+sudo ./run.sh
 ```
 
 This will:
@@ -72,11 +72,7 @@ This will:
 Once inside the container, you can download the model:
 
 ```bash
-# Make the script executable
-chmod +x download_model.sh
-
-# Download the model
-./download_model.sh
+python -c "from model_download import download_phi4_model; download_phi4_model()"
 ```
 
 The model will be downloaded to the shared HuggingFace cache directory.
@@ -99,14 +95,13 @@ Access from host: http://localhost:8888
 
 ```
 project/
-├── model_downloader.py        # Utility to download and cache the model
+├── model_download.py        # Utility to download and cache the model
 ├── audio_transcriber.py       # Core transcription functionality
 ├── streamlit_app.py           # Web interface
 ├── Dockerfile                 # Docker configuration
 ├── requirements.txt           # Python dependencies
 ├── build.sh                   # Script to build the Docker image
-├── run.sh                     # Script to run the container
-└── download_model.sh          # Script to download model inside container
+└── run.sh                     # Script to run the container
 ```
 
 ## How the Caching Works
