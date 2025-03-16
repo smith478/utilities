@@ -117,3 +117,5 @@ project/
 - [ ] Get streamlit app working with use of microphone to record audio
 - [ ] Get streamlit/open webui working with streaming/real time audio
 - [ ] Add unit tests
+
+Packages to add to requirements.txt: 
