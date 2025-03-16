@@ -111,8 +111,9 @@ project/
 3. Any other containers can use the same cache to avoid re-downloading
 4. Your host applications can also use the same cached models
 
-## Important Notes
+## Next steps
 
-- GPU acceleration works automatically if NVIDIA drivers and Docker GPU support are properly configured
-- The model is about 10GB in size, so ensure you have enough disk space
-- All changes to files in the mounted directory are reflected on your host system
+- [ ] Create notebook to test transcription of static audio file
+- [ ] Get streamlit app working with use of microphone to record audio
+- [ ] Get streamlit/open webui working with streaming/real time audio
+- [ ] Add unit tests
