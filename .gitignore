@@ -1,3 +1,6 @@
+*.DS_Store
+literature_review/papers/*
+
 audio_transcription/artifacts/*
 
 open_web_ui_stt/models/*
