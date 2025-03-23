@@ -131,7 +131,22 @@ pip install fastapi uvicorn transformers torch numpy gradio fastrtc python-doten
 ```bash
 python fastrtc/whisper_groq.py
 # Or run in UI mode
-MODE=UI python your_script_name.py
+MODE=UI python fastrtc/whisper_groq.py
 ```
 
 Access the application by opening your browser and going to http://localhost:7860. There are options to run the speech to text model locally or via groq API.
+
+For the local script `fastrtc/whisper_local.py`, the configurations can be set in a `.env` file where the following values are configurable:
+
+## Available Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `HF_CACHE_DIR` | `~/.cache/huggingface` | Base directory for caching models |
+| `WHISPER_MODEL` | `openai/whisper-large-v3` | Model ID from Hugging Face |
+| `USE_MPS` | `1` (enabled) | Use Apple MPS acceleration (1=yes, 0=no) |
+| `USE_FP16` | `1` (enabled) | Use FP16 precision (1=yes, 0=no) |
+| `WHISPER_BATCH_SIZE` | `16` | Batch size for processing |
+| `WHISPER_CHUNK_LENGTH` | `30` | Audio chunk length in seconds |
+| `WHISPER_MAX_NEW_TOKENS` | `128` | Maximum new tokens to generate |
+| `MODE` | (none) | Application mode: `UI`, `PHONE`, or none |

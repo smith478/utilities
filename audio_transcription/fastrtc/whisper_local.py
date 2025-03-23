@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import os
 
 import gradio as gr
 import numpy as np
@@ -17,54 +18,47 @@ from fastrtc import (
 from gradio.utils import get_space
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
-cur_dir = Path(__file__).parent
-
+# Load environment variables first (from .env file if present)
 load_dotenv()
 
-# Path where the model will be stored
-MODEL_PATH = Path("./models/whisper-large-v3")
+# Get cache directory from environment variable or use default
+HF_CACHE_DIR = os.environ.get("HF_CACHE_DIR", os.path.expanduser("~/.cache/huggingface"))
+os.environ["TRANSFORMERS_CACHE"] = os.path.join(HF_CACHE_DIR, "hub")
 
-# Function to load or download Whisper model
+# Set device and model precision via environment variables
+USE_MPS = os.environ.get("USE_MPS", "1") == "1"  # Default to using MPS if available
+USE_FP16 = os.environ.get("USE_FP16", "1") == "1"  # Default to using FP16 precision
+
+# Current directory reference
+cur_dir = Path(__file__).parent
+
+# Function to load Whisper model using configured cache
 def get_whisper_pipeline():
-    model_id = "openai/whisper-large-v3"
+    model_id = os.environ.get("WHISPER_MODEL", "openai/whisper-large-v3")
     
-    # Create the model directory if it doesn't exist
-    MODEL_PATH.mkdir(parents=True, exist_ok=True)
+    # Select the appropriate device based on environment settings
+    device = "mps" if USE_MPS and torch.backends.mps.is_available() else "cpu"
+    torch_dtype = torch.float16 if USE_FP16 and device == "mps" else torch.float32
     
-    # Check if model already exists locally
-    if (MODEL_PATH / "pytorch_model.bin").exists() or list(MODEL_PATH.glob("*.safetensors")):
-        print("Loading Whisper model from disk...")
-        device = "mps" if torch.backends.mps.is_available() else "cpu"
-        torch_dtype = torch.float16 if device == "mps" else torch.float32
-        
-        # Load model and processor from local storage
-        model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            MODEL_PATH,
-            torch_dtype=torch_dtype,
-            low_cpu_mem_usage=True,
-            use_safetensors=True
-        )
-        processor = AutoProcessor.from_pretrained(MODEL_PATH)
-    else:
-        print("Downloading Whisper model (first run only)...")
-        device = "mps" if torch.backends.mps.is_available() else "cpu"
-        torch_dtype = torch.float16 if device == "mps" else torch.float32
-        
-        # Download model and processor and save to disk
-        model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id,
-            torch_dtype=torch_dtype,
-            low_cpu_mem_usage=True,
-            use_safetensors=True
-        )
-        processor = AutoProcessor.from_pretrained(model_id)
-        
-        # Save model and processor locally
-        model.save_pretrained(MODEL_PATH)
-        processor.save_pretrained(MODEL_PATH)
+    print(f"Loading Whisper model '{model_id}' on {device} device with {torch_dtype} precision")
+    print(f"Using cache directory: {os.environ['TRANSFORMERS_CACHE']}")
+    
+    # Load model and processor
+    model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        model_id,
+        torch_dtype=torch_dtype,
+        low_cpu_mem_usage=True,
+        use_safetensors=True
+    )
+    processor = AutoProcessor.from_pretrained(model_id)
     
     # Move model to appropriate device
     model.to(device)
+    
+    # Get configurable pipeline parameters
+    batch_size = int(os.environ.get("WHISPER_BATCH_SIZE", "16"))
+    chunk_length = int(os.environ.get("WHISPER_CHUNK_LENGTH", "30"))
+    max_new_tokens = int(os.environ.get("WHISPER_MAX_NEW_TOKENS", "128"))
     
     # Create and return the pipeline
     pipe = pipeline(
@@ -72,9 +66,9 @@ def get_whisper_pipeline():
         model=model,
         tokenizer=processor.tokenizer,
         feature_extractor=processor.feature_extractor,
-        max_new_tokens=128,
-        chunk_length_s=30,
-        batch_size=16,
+        max_new_tokens=max_new_tokens,
+        chunk_length_s=chunk_length,
+        batch_size=batch_size,
         return_timestamps=True
     )
     return pipe
