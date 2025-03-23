@@ -12,7 +12,6 @@ from fastrtc import (
     AdditionalOutputs,
     ReplyOnPause,
     Stream,
-    audio_to_bytes,
     get_twilio_turn_credentials,
 )
 from gradio.utils import get_space

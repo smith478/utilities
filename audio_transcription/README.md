@@ -123,9 +123,11 @@ project/
 [FastRTC](https://fastrtc.org/) is a Python library that helps with real-time speech to text.
 
 ## How to run the server
-Install dependencies
+Install dependencies. Note that we cannot use numpy 2.
 ```bash
-pip install fastapi uvicorn transformers torch numpy gradio fastrtc python-dotenv
+conda create -n fastrtc python=3.10 numpy=1.24
+conda activate fastrtc
+pip install accelerate fastapi uvicorn transformers torch torchaudio gradio fastrtc python-dotenv
 ```
 
 ```bash
