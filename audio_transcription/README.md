@@ -118,4 +118,20 @@ project/
 - [ ] Get streamlit/open webui working with streaming/real time audio
 - [ ] Add unit tests
 
-Packages to add to requirements.txt: 
+# Transcription with FastRTC
+
+[FastRTC](https://fastrtc.org/) is a Python library that helps with real-time speech to text.
+
+## How to run the server
+Install dependencies
+```bash
+pip install fastapi uvicorn transformers torch numpy gradio fastrtc python-dotenv
+```
+
+```bash
+python fastrtc/whisper_groq.py
+# Or run in UI mode
+MODE=UI python your_script_name.py
+```
+
+Access the application by opening your browser and going to http://localhost:7860. There are options to run the speech to text model locally or via groq API.
