@@ -11,17 +11,19 @@ class ChessOpeningTrainer:
         Args:
             engine_path: Path to the Stockfish chess engine executable.
         """
-        # Default paths for different operating systems
+        # Expanded default paths including Homebrew location
         default_paths = {
+            'darwin': [
+                '/opt/homebrew/bin/stockfish',  # Homebrew on Apple Silicon Macs
+                '/usr/local/bin/stockfish',     # Homebrew on Intel Macs
+                '/Applications/Stockfish.app/Contents/MacOS/stockfish',
+                os.path.expanduser('~/Downloads/stockfish'),
+                os.path.expanduser('~/stockfish')
+            ],
             'win32': [
                 'stockfish.exe', 
                 r'C:\Program Files\Stockfish\stockfish.exe',
                 os.path.expanduser(r'~\Downloads\stockfish\stockfish.exe')
-            ],
-            'darwin': [
-                '/Applications/Stockfish.app/Contents/MacOS/stockfish',
-                '/usr/local/bin/stockfish',
-                os.path.expanduser('~/Downloads/stockfish')
             ],
             'linux': [
                 '/usr/local/bin/stockfish',
@@ -41,53 +43,62 @@ class ChessOpeningTrainer:
         # Validate engine path
         if not engine_path or not os.path.exists(engine_path):
             print(f"Error: Could not find Stockfish chess engine.")
-            print("Please provide the correct path to the Stockfish executable.")
-            print("You can download it from: https://stockfishchess.org/download/")
+            print("Possible solutions:")
+            print("1. Ensure Stockfish is installed")
+            print("2. Provide the correct path to the Stockfish executable")
+            print("3. Install via Homebrew: 'brew install stockfish'")
+            print("Download link: https://stockfishchess.org/download/")
             sys.exit(1)
 
         try:
             self.engine = chess.engine.SimpleEngine.popen_uci(engine_path)
+            print(f"Stockfish initialized from: {engine_path}")
         except Exception as e:
             print(f"Error initializing Stockfish: {e}")
             sys.exit(1)
         
         self.board = chess.Board()
+        self.player_color = None
 
-    def get_best_move_with_explanation(self, board):
+    def get_best_move_with_explanation(self, board, color):
         """
         Gets the best move from the engine and provides a brief explanation.
 
         Args:
             board: The current chess board state.
+            color: Color to analyze (chess.WHITE or chess.BLACK)
 
         Returns:
             A tuple containing the best move and a short explanation.
         """
         try:
-            # Increase time limit and add depth for more reliable analysis
-            result = self.engine.play(board, chess.engine.Limit(time=0.5, depth=15))
-            best_move = result.move
+            # Analyze from the perspective of the current player
+            result = self.engine.analyse(
+                board, 
+                chess.engine.Limit(time=0.5, depth=15),
+                game=board
+            )
             
-            # Get more detailed information about the move
-            info = self.engine.analyse(board, chess.engine.Limit(depth=15))
-            score = info.get("score", chess.engine.PovScore(chess.engine.Mate(0), chess.WHITE))
+            # Get the score and move
+            score = result.get("score")
+            best_move = result.get("pv")[0]  # Best principal variation move
             
-            # Generate a more informative explanation
+            # Generate explanation based on score
             if isinstance(score.relative, chess.engine.Mate):
                 mate_in = score.relative.moves
                 explanation = f"Forced mate in {mate_in} moves!" if mate_in > 0 else "Avoiding mate!"
             else:
                 cp_score = score.relative.score()
-                if cp_score > 50:
-                    explanation = "Strong move improving position significantly."
-                elif cp_score > 20:
-                    explanation = "Good move with a slight positional advantage."
-                elif cp_score > -20:
-                    explanation = "Balanced move maintaining the current position."
-                elif cp_score > -50:
-                    explanation = "Defensive move to minimize disadvantage."
+                if abs(cp_score) > 100:
+                    advantage = "significant" if cp_score > 0 else "significant disadvantage"
+                    direction = "improving" if cp_score > 0 else "worsening"
+                    explanation = f"Move {direction} position with a {advantage}."
+                elif abs(cp_score) > 50:
+                    advantage = "slight" if cp_score > 0 else "slight disadvantage"
+                    direction = "improving" if cp_score > 0 else "worsening"
+                    explanation = f"Move {direction} position with a {advantage}."
                 else:
-                    explanation = "Challenging position, requires careful play."
+                    explanation = "Balanced move maintaining the current position."
 
             return best_move, explanation
 
@@ -110,13 +121,19 @@ class ChessOpeningTrainer:
                     print("Invalid color. Please enter 'white' or 'black'.")
                     continue
 
-                opponent_color = "white" if color == "black" else "black"
+                self.player_color = chess.WHITE if color == "white" else chess.BLACK
+                opponent_color = chess.BLACK if color == "white" else chess.WHITE
+
                 print(f"Your color: {color.capitalize()}")
-                print(f"Opponent's color: {opponent_color.capitalize()}")
+                print(f"Opponent's color: {opponent_color}")
 
                 self.board.reset()  # Ensure a fresh board for each session
-                if color == "black":
-                    self.board.turn = chess.BLACK
+                
+                # If playing black, prompt for first white move or suggest
+                if self.player_color == chess.BLACK:
+                    print("\nSuggested first move for White:")
+                    best_first_move, explanation = self.get_best_move_with_explanation(self.board, chess.WHITE)
+                    print(f"Stockfish suggests: {best_first_move.uci()} - {explanation}")
 
                 print("\nEnter moves in UCI format (e.g., e2e4).")
                 print("Legal moves will show board state and engine analysis.")
@@ -126,37 +143,58 @@ class ChessOpeningTrainer:
                     print("\nCurrent board:")
                     print(self.board)
 
-                    move_str = input("Enter move: ").lower()
+                    # Determine whose turn it is
+                    current_color = "White" if self.board.turn == chess.WHITE else "Black"
+                    print(f"\n{current_color}'s turn:")
 
-                    if move_str == 'quit':
-                        print("Exiting...")
-                        return
-                    
-                    if move_str == 'help':
-                        print("\nCommands:")
-                        print("- Enter moves in UCI format (e.g., e2e4)")
-                        print("- 'quit' to exit the program")
-                        print("- 'help' to show this menu")
-                        continue
+                    # Handle moves based on whether it's the player's turn
+                    if self.board.turn == self.player_color:
+                        move_str = input("Enter your move: ").lower()
 
-                    try:
-                        move = self.board.parse_uci(move_str)
-                        if move not in self.board.legal_moves:
-                            print("Illegal move. Please enter a valid move.")
+                        if move_str == 'quit':
+                            print("Exiting...")
+                            return
+                        
+                        if move_str == 'help':
+                            print("\nCommands:")
+                            print("- Enter moves in UCI format (e.g., e2e4)")
+                            print("- 'quit' to exit the program")
+                            print("- 'help' to show this menu")
                             continue
 
-                        self.board.push(move)
-                        
-                        # Computer's response
-                        best_move, explanation = self.get_best_move_with_explanation(self.board)
-                        if best_move:
-                            self.board.push(best_move)
-                            print(f"\nEngine move: {best_move.uci()} - {explanation}")
-                            print("Updated board:")
-                            print(self.board)
+                        try:
+                            move = self.board.parse_uci(move_str)
+                            if move not in self.board.legal_moves:
+                                print("Illegal move. Please enter a valid move.")
+                                continue
 
-                    except ValueError:
-                        print("Invalid move format. Please enter moves in UCI format (e.g., e2e4).")
+                            self.board.push(move)
+                            
+                            # Suggest opponent's best move
+                            best_move, explanation = self.get_best_move_with_explanation(self.board, self.board.turn)
+                            print(f"\nRecommended {current_color} move by Stockfish: {best_move.uci()} - {explanation}")
+
+                        except ValueError:
+                            print("Invalid move format. Please enter moves in UCI format (e.g., e2e4).")
+                    else:
+                        # If it's not the player's turn, get the opponent's best move
+                        print("Waiting for opponent's move. Enter the move you want to follow.")
+                        move_str = input("Enter opponent's move: ").lower()
+
+                        try:
+                            move = self.board.parse_uci(move_str)
+                            if move not in self.board.legal_moves:
+                                print("Illegal move. Please enter a valid move.")
+                                continue
+
+                            self.board.push(move)
+                            
+                            # Suggest player's best move
+                            best_move, explanation = self.get_best_move_with_explanation(self.board, self.board.turn)
+                            print(f"\nStockfish suggests your next move: {best_move.uci()} - {explanation}")
+
+                        except ValueError:
+                            print("Invalid move format. Please enter moves in UCI format (e.g., e2e4).")
 
             except KeyboardInterrupt:
                 print("\nExiting...")
