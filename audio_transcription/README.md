@@ -127,7 +127,7 @@ Install dependencies. Note that we cannot use numpy 2.
 ```bash
 conda create -n fastrtc python=3.10 numpy=1.24
 conda activate fastrtc
-pip install accelerate fastapi uvicorn transformers torch torchaudio gradio fastrtc python-dotenv
+pip install accelerate fastapi uvicorn transformers torch torchaudio gradio fastrtc python-dotenv groq
 ```
 
 ```bash
@@ -152,3 +152,9 @@ For the local script `fastrtc/whisper_local.py`, the configurations can be set i
 | `WHISPER_CHUNK_LENGTH` | `30` | Audio chunk length in seconds |
 | `WHISPER_MAX_NEW_TOKENS` | `128` | Maximum new tokens to generate |
 | `MODE` | (none) | Application mode: `UI`, `PHONE`, or none |
+
+For the groq API, you will also need to add your API key to the `.env` file. Additionaly groq will require ffmpeg to be installed.
+
+## TODO
+- Get the local version working as well as the groq version
+- Get it running on a VM via desktop where application is run from laptop

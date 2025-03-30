@@ -34,6 +34,7 @@ cur_dir = Path(__file__).parent
 # Function to load Whisper model using configured cache
 def get_whisper_pipeline():
     model_id = os.environ.get("WHISPER_MODEL", "openai/whisper-large-v3")
+    # model_id = os.environ.get("WHISPER_MODEL", "openai/whisper-large-v3-turbo")
     
     # Select the appropriate device based on environment settings
     device = "mps" if USE_MPS and torch.backends.mps.is_available() else "cpu"
@@ -56,7 +57,7 @@ def get_whisper_pipeline():
     
     # Get configurable pipeline parameters
     batch_size = int(os.environ.get("WHISPER_BATCH_SIZE", "16"))
-    chunk_length = int(os.environ.get("WHISPER_CHUNK_LENGTH", "30"))
+    chunk_length = int(os.environ.get("WHISPER_CHUNK_LENGTH", "10"))
     max_new_tokens = int(os.environ.get("WHISPER_MAX_NEW_TOKENS", "128"))
     
     # Create and return the pipeline

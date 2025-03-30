@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import os
 
 import gradio as gr
 import numpy as np
@@ -21,13 +22,14 @@ cur_dir = Path(__file__).parent
 load_dotenv()
 
 
-groq_client = AsyncClient()
+# groq_client = AsyncClient()
+groq_client = AsyncClient(api_key=os.environ.get("GROQ_API_KEY"))
 
 
 async def transcribe(audio: tuple[int, np.ndarray]):
     transcript = await groq_client.audio.transcriptions.create(
         file=("audio-file.mp3", audio_to_bytes(audio)),
-        model="whisper-large-v3-turbo",
+        model="whisper-large-v3",
         response_format="verbose_json",
     )
     yield AdditionalOutputs(transcript.text)
