@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  research-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      - OLLAMA_MODEL=llama3
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - DATA_DIR=/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
