@@ -4,4 +4,7 @@ For the underlying LLM we will use Gemini 2.5 experimental. An API key can be se
 
 # AI Code Assistant
 
-Here we will use aider, with installation instructions [here](https://aider.chat/docs/install.html).
+Here we will use aider, with installation instructions [here](https://aider.chat/docs/install.html). To use this with Gemini experimental use:
+```bash
+aider --model gemini-exp --api-key google=<YOUR API KEY>
+```
