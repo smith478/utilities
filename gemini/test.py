@@ -12,4 +12,7 @@ response = client.models.generate_content(
     contents=prompt
 )
 
+print("Response text:")
 print(response.text)
+print("Response full response:")
+print(response)
