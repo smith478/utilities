@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: odd-even-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: odd-even
+  template:
+    metadata:
+      labels:
+        app: odd-even
+    spec:
+      containers:
+        - name: odd-even-app
+          image: odd-even-app:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
