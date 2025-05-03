@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: odd-even-config
+data:
+  GREETING_MESSAGE: "Configured message: The number is"
