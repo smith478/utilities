@@ -63,6 +63,7 @@ Also make sure `kfp` is installed in your python environment - `pip install kfp=
  ```bash
  python odd_even_pipeline.py
  ```
+ This will output `odd_even_pipeline.yaml`. Note there's an alternative `simple_odd_even_pipeline.py` which uses a pre-built kubectl image, creates a ConfigMap and applies your Kubernetes resources.
 
  Upload and run the pipeline
  ```bash
