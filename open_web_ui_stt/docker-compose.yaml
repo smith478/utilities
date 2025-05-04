@@ -1,11 +1,20 @@
+version: '3'
+
 services:
   transcription-service:
     build: ./transcription-service
     environment:
       - ASR_MODEL_ID=Systran/faster-whisper-tiny
-      - ASR_MODEL_PATH=/models  # Mount point in container
+      - ASR_MODEL_PATH=/models
       - ASR_CHUNK_LENGTH=5
       - ASR_STRIDE_LENGTH=1
     volumes:
-      - ./models:/models  # Map local models to container
-      - ./models:/root/.cache/huggingface/hub  # Optional: cache models
+      - ./models:/models
+    ports:
+      - "8000:8000"  # Expose the port to access the API
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
