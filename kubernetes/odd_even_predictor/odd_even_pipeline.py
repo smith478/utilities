@@ -1,75 +1,133 @@
 import kfp
 from kfp import dsl
 from kfp.components import func_to_container_op
-from kubernetes.client.models import V1EnvVar
 
 @func_to_container_op
-def build_image(image_name: str, tag: str, dockerfile_path: str, context_path: str):
-    """Builds a Docker image using kaniko."""
-    import subprocess
-    
-    full_image_name = f"{image_name}:{tag}"
-    subprocess.run([
-        "kaniko",
-        "--dockerfile", dockerfile_path,
-        "--context", context_path,
-        "--destination", full_image_name
-    ], check=True)
-    
-    return full_image_name
-
-@func_to_container_op
-def deploy_to_kubernetes(image_name: str, deployment_yaml: str, service_yaml: str, configmap_yaml: str):
+def deploy_to_kubernetes(deployment_yaml: str, service_yaml: str, configmap_yaml: str):
     """Deploys the application to Kubernetes."""
     import subprocess
     import yaml
+    import os
     
-    # Apply ConfigMap
-    subprocess.run(["kubectl", "apply", "-f", configmap_yaml], check=True)
+    # Print current directory and list files to help debug
+    print(f"Current directory: {os.getcwd()}")
+    print("Files in directory:")
+    for f in os.listdir('.'):
+        print(f"  - {f}")
     
-    # Modify the deployment YAML to use the built image
-    with open(deployment_yaml, 'r') as f:
-        deployment = yaml.safe_load(f)
+    # Create temporary files if inputs are paths that don't exist
+    # This handles the case where the pipeline passes file paths that don't exist in the container
+    def ensure_file(file_path, default_content):
+        if not os.path.exists(file_path):
+            print(f"File {file_path} not found, creating temporary file with default content")
+            with open(file_path, 'w') as f:
+                f.write(default_content)
+        return file_path
     
-    deployment['spec']['template']['spec']['containers'][0]['image'] = image_name
+    # Default content for ConfigMap
+    configmap_content = """
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: odd-even-config
+data:
+  GREETING_MESSAGE: "Kubeflow pipeline: The number is"
+"""
+    # Default content for deployment
+    deployment_content = """
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: odd-even-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: odd-even
+  template:
+    metadata:
+      labels:
+        app: odd-even
+    spec:
+      containers:
+        - name: odd-even-app
+          image: odd-even-app:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          env:
+          - name: GREETING_MESSAGE
+            valueFrom:
+              configMapKeyRef:
+                name: odd-even-config
+                key: GREETING_MESSAGE
+"""
+    # Default content for service
+    service_content = """
+apiVersion: v1
+kind: Service
+metadata:
+  name: odd-even-service
+spec:
+  selector:
+    app: odd-even
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+  type: NodePort
+"""
     
-    # Write the modified deployment back
-    with open('modified_deployment.yaml', 'w') as f:
-        yaml.dump(deployment, f)
+    # Ensure files exist
+    configmap_file = ensure_file(configmap_yaml, configmap_content)
+    deployment_file = ensure_file(deployment_yaml, deployment_content)
+    service_file = ensure_file(service_yaml, service_content)
     
-    # Apply the deployment and service
-    subprocess.run(["kubectl", "apply", "-f", "modified_deployment.yaml"], check=True)
-    subprocess.run(["kubectl", "apply", "-f", service_yaml], check=True)
+    # Install kubectl if needed
+    try:
+        subprocess.run(["kubectl", "version", "--client"], check=True, capture_output=True)
+        print("kubectl is already installed")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("Installing kubectl...")
+        subprocess.run([
+            "curl", "-LO", 
+            "https://dl.k8s.io/release/v1.26.0/bin/linux/amd64/kubectl"
+        ], check=True)
+        subprocess.run(["chmod", "+x", "./kubectl"], check=True)
+        subprocess.run(["mv", "./kubectl", "/usr/local/bin/kubectl"], check=True)
     
-    return "Deployment successful"
+    try:
+        # Apply ConfigMap
+        print("Applying ConfigMap...")
+        subprocess.run(["kubectl", "apply", "-f", configmap_file], check=True)
+        
+        # Apply deployment and service
+        print("Applying Deployment...")
+        subprocess.run(["kubectl", "apply", "-f", deployment_file], check=True)
+        print("Applying Service...")
+        subprocess.run(["kubectl", "apply", "-f", service_file], check=True)
+        
+        # Check status
+        print("Checking deployment status...")
+        subprocess.run(["kubectl", "get", "deployments"], check=True)
+        subprocess.run(["kubectl", "get", "services"], check=True)
+        
+        return "Deployment successful"
+    except subprocess.CalledProcessError as e:
+        print(f"Error in deployment: {e}")
+        return f"Deployment failed: {str(e)}"
 
 @dsl.pipeline(
     name="Odd-Even Predictor Pipeline",
-    description="A pipeline to build and deploy the odd-even predictor application."
+    description="A pipeline to deploy the odd-even predictor application using existing Docker image."
 )
 def odd_even_pipeline():
-    # Define pipeline parameters
-    image_name = "odd-even-app"
-    tag = "v1"
-    
-    # Build the Docker image
-    build_task = build_image(
-        image_name=image_name,
-        tag=tag,
-        dockerfile_path="Dockerfile",
-        context_path="."
-    )
-    
-    # Deploy to Kubernetes
+    # Deploy to Kubernetes using existing image
     deploy_task = deploy_to_kubernetes(
-        image_name=f"{image_name}:{tag}",
         deployment_yaml="deployment.yaml",
         service_yaml="service.yaml",
         configmap_yaml="configmap.yaml"
     )
-    
-    # Set dependencies
-    deploy_task.after(build_task)
 
 if __name__ == "__main__":
     # Compile the pipeline

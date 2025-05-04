@@ -1,0 +1,166 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: odd-even-predictor-pipeline-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.22, pipelines.kubeflow.org/pipeline_compilation_time: '2025-05-04T09:24:01.134404',
+    pipelines.kubeflow.org/pipeline_spec: '{"description": "A pipeline to build and
+      deploy the odd-even predictor application.", "name": "Odd-Even Predictor Pipeline"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.22}
+spec:
+  entrypoint: odd-even-predictor-pipeline
+  templates:
+  - name: build-image
+    container:
+      args: [--image-name, odd-even-app, --tag, v1, --dockerfile-path, Dockerfile,
+        --context-path, .]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def build_image(image_name, tag, dockerfile_path, context_path):
+            """Builds a Docker image using kaniko."""
+            import subprocess
+
+            full_image_name = f"{image_name}:{tag}"
+            subprocess.run([
+                "kaniko",
+                "--dockerfile", dockerfile_path,
+                "--context", context_path,
+                "--destination", full_image_name
+            ], check=True)
+
+            return full_image_name
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Build image', description='Builds a Docker image using kaniko.')
+        _parser.add_argument("--image-name", dest="image_name", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--tag", dest="tag", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--dockerfile-path", dest="dockerfile_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--context-path", dest="context_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = build_image(**_parsed_args)
+      image: python:3.7
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"description": "Builds
+          a Docker image using kaniko.", "implementation": {"container": {"args":
+          ["--image-name", {"inputValue": "image_name"}, "--tag", {"inputValue": "tag"},
+          "--dockerfile-path", {"inputValue": "dockerfile_path"}, "--context-path",
+          {"inputValue": "context_path"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def build_image(image_name, tag, dockerfile_path, context_path):\n    \"\"\"Builds
+          a Docker image using kaniko.\"\"\"\n    import subprocess\n\n    full_image_name
+          = f\"{image_name}:{tag}\"\n    subprocess.run([\n        \"kaniko\",\n        \"--dockerfile\",
+          dockerfile_path,\n        \"--context\", context_path,\n        \"--destination\",
+          full_image_name\n    ], check=True)\n\n    return full_image_name\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Build image'', description=''Builds
+          a Docker image using kaniko.'')\n_parser.add_argument(\"--image-name\",
+          dest=\"image_name\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--tag\",
+          dest=\"tag\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--dockerfile-path\",
+          dest=\"dockerfile_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--context-path\",
+          dest=\"context_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parsed_args
+          = vars(_parser.parse_args())\n\n_outputs = build_image(**_parsed_args)\n"],
+          "image": "python:3.7"}}, "inputs": [{"name": "image_name", "type": "String"},
+          {"name": "tag", "type": "String"}, {"name": "dockerfile_path", "type": "String"},
+          {"name": "context_path", "type": "String"}], "name": "Build image"}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"context_path": ".", "dockerfile_path":
+          "Dockerfile", "image_name": "odd-even-app", "tag": "v1"}'}
+  - name: deploy-to-kubernetes
+    container:
+      args: [--image-name, 'odd-even-app:v1', --deployment-yaml, deployment.yaml,
+        --service-yaml, service.yaml, --configmap-yaml, configmap.yaml]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def deploy_to_kubernetes(image_name, deployment_yaml, service_yaml, configmap_yaml):
+            """Deploys the application to Kubernetes."""
+            import subprocess
+            import yaml
+
+            # Apply ConfigMap
+            subprocess.run(["kubectl", "apply", "-f", configmap_yaml], check=True)
+
+            # Modify the deployment YAML to use the built image
+            with open(deployment_yaml, 'r') as f:
+                deployment = yaml.safe_load(f)
+
+            deployment['spec']['template']['spec']['containers'][0]['image'] = image_name
+
+            # Write the modified deployment back
+            with open('modified_deployment.yaml', 'w') as f:
+                yaml.dump(deployment, f)
+
+            # Apply the deployment and service
+            subprocess.run(["kubectl", "apply", "-f", "modified_deployment.yaml"], check=True)
+            subprocess.run(["kubectl", "apply", "-f", service_yaml], check=True)
+
+            return "Deployment successful"
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Deploy to kubernetes', description='Deploys the application to Kubernetes.')
+        _parser.add_argument("--image-name", dest="image_name", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--deployment-yaml", dest="deployment_yaml", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--service-yaml", dest="service_yaml", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--configmap-yaml", dest="configmap_yaml", type=str, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = deploy_to_kubernetes(**_parsed_args)
+      image: python:3.7
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"description": "Deploys
+          the application to Kubernetes.", "implementation": {"container": {"args":
+          ["--image-name", {"inputValue": "image_name"}, "--deployment-yaml", {"inputValue":
+          "deployment_yaml"}, "--service-yaml", {"inputValue": "service_yaml"}, "--configmap-yaml",
+          {"inputValue": "configmap_yaml"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def deploy_to_kubernetes(image_name, deployment_yaml, service_yaml, configmap_yaml):\n    \"\"\"Deploys
+          the application to Kubernetes.\"\"\"\n    import subprocess\n    import
+          yaml\n\n    # Apply ConfigMap\n    subprocess.run([\"kubectl\", \"apply\",
+          \"-f\", configmap_yaml], check=True)\n\n    # Modify the deployment YAML
+          to use the built image\n    with open(deployment_yaml, ''r'') as f:\n        deployment
+          = yaml.safe_load(f)\n\n    deployment[''spec''][''template''][''spec''][''containers''][0][''image'']
+          = image_name\n\n    # Write the modified deployment back\n    with open(''modified_deployment.yaml'',
+          ''w'') as f:\n        yaml.dump(deployment, f)\n\n    # Apply the deployment
+          and service\n    subprocess.run([\"kubectl\", \"apply\", \"-f\", \"modified_deployment.yaml\"],
+          check=True)\n    subprocess.run([\"kubectl\", \"apply\", \"-f\", service_yaml],
+          check=True)\n\n    return \"Deployment successful\"\n\nimport argparse\n_parser
+          = argparse.ArgumentParser(prog=''Deploy to kubernetes'', description=''Deploys
+          the application to Kubernetes.'')\n_parser.add_argument(\"--image-name\",
+          dest=\"image_name\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--deployment-yaml\",
+          dest=\"deployment_yaml\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--service-yaml\",
+          dest=\"service_yaml\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--configmap-yaml\",
+          dest=\"configmap_yaml\", type=str, required=True, default=argparse.SUPPRESS)\n_parsed_args
+          = vars(_parser.parse_args())\n\n_outputs = deploy_to_kubernetes(**_parsed_args)\n"],
+          "image": "python:3.7"}}, "inputs": [{"name": "image_name", "type": "String"},
+          {"name": "deployment_yaml", "type": "String"}, {"name": "service_yaml",
+          "type": "String"}, {"name": "configmap_yaml", "type": "String"}], "name":
+          "Deploy to kubernetes"}', pipelines.kubeflow.org/component_ref: '{}', pipelines.kubeflow.org/arguments.parameters: '{"configmap_yaml":
+          "configmap.yaml", "deployment_yaml": "deployment.yaml", "image_name": "odd-even-app:v1",
+          "service_yaml": "service.yaml"}'}
+  - name: odd-even-predictor-pipeline
+    dag:
+      tasks:
+      - {name: build-image, template: build-image}
+      - name: deploy-to-kubernetes
+        template: deploy-to-kubernetes
+        dependencies: [build-image]
+  arguments:
+    parameters: []
+  serviceAccountName: pipeline-runner
