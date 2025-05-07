@@ -1,0 +1,14 @@
+# PyTorch (ensure your local CUDA version matches if not using Docker for this)
+# For CUDA 12.1:
+# torch==2.2.1
+# torchvision==0.17.1
+# torchaudio==2.2.1
+# (Install with: pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121)
+
+# NVIDIA NeMo Toolkit
+nemo_toolkit[asr]==1.23.0
+
+# UI and Utilities
+gradio
+soundfile
+librosa
