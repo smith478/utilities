@@ -1,5 +1,6 @@
 <script>
     import FormElements from '$lib/components/FormElements.svelte';
+    import AudioRecorder from '$lib/components/AudioRecorder.svelte';
     
     let myText = 'Edit me!';
     let myOptions = ['Svelte', 'React', 'Vue', 'Angular'];
@@ -15,3 +16,5 @@
   />
   
   <p>Parent component can access: Text = {myText}, Selection = {mySelection}</p>
+  
+  <AudioRecorder />
