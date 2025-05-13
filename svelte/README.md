@@ -406,3 +406,432 @@ Create a new component for fetching and displaying data `src/lib/components/Back
   }
 </style>
 ```
+
+## Exercise 6: Saving and Replaying Audio Recordings
+We'll enhance the audio recorder to save recordings with timestamps and create a playback library.
+1. First, update the Python backend (backend/main.py):
+```python
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from typing import List, Optional
+import os
+import shutil
+import time
+from datetime import datetime
+
+app = FastAPI()
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class Item(BaseModel):
+    name: str
+    value: str
+
+class AudioRecording(BaseModel):
+    id: str
+    timestamp: str
+    filename: str
+    duration: Optional[float] = None
+
+items = [
+    {"name": "Item 1", "value": "Value 1"},
+    {"name": "Item 2", "value": "Value 2"}
+]
+
+# Create directory for audio storage
+AUDIO_DIR = "audio_files"
+os.makedirs(AUDIO_DIR, exist_ok=True)
+
+# Store audio metadata
+recordings = []
+
+@app.get("/")
+def read_root():
+    return {"message": "Hello from FastAPI!"}
+
+@app.get("/api/items")
+def get_items():
+    return {"items": items}
+
+@app.post("/api/items")
+def add_item(item: Item):
+    items.append({"name": item.name, "value": item.value})
+    return {"status": "success", "items": items}
+
+@app.post("/api/audio")
+async def upload_audio(file: UploadFile = File(...), duration: Optional[float] = None):
+    # Generate timestamp and filename
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    recording_id = f"rec_{int(time.time())}"
+    file_extension = os.path.splitext(file.filename)[1] if file.filename else ".wav"
+    filename = f"{recording_id}{file_extension}"
+    
+    # Save the file
+    file_path = os.path.join(AUDIO_DIR, filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Save metadata
+    recording = AudioRecording(
+        id=recording_id,
+        timestamp=timestamp,
+        filename=filename,
+        duration=duration
+    )
+    recordings.append(recording.dict())
+    
+    return {"status": "success", "recording": recording.dict()}
+
+@app.get("/api/audio")
+def get_recordings():
+    return {"recordings": recordings}
+
+@app.get("/api/audio/{recording_id}")
+def get_audio_file(recording_id: str):
+    for rec in recordings:
+        if rec["id"] == recording_id:
+            file_path = os.path.join(AUDIO_DIR, rec["filename"])
+            if os.path.exists(file_path):
+                return FileResponse(
+                    path=file_path, 
+                    media_type="audio/wav", 
+                    filename=rec["filename"]
+                )
+    
+    return {"error": "Recording not found"}, 404
+```
+2. Create an improved audio recorder
+Update `src/lib/components/AudioRecorderAdvanced.svelte`:
+```svelte
+<script>
+  import { onMount } from 'svelte';
+  
+  let audioChunks = [];
+  let recorder;
+  let audioURL = '';
+  let isRecording = false;
+  let recordings = [];
+  let recordingStartTime;
+  let recordingDuration = 0;
+  let selectedRecording = null;
+  let loadingRecordings = true;
+  let error = null;
+  
+  onMount(async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/audio');
+      const data = await response.json();
+      recordings = data.recordings;
+      loadingRecordings = false;
+    } catch (e) {
+      error = e.message;
+      loadingRecordings = false;
+    }
+  });
+  
+  async function startRecording() {
+    try {
+      audioChunks = [];
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recorder = new MediaRecorder(stream);
+      
+      recorder.ondataavailable = (event) => {
+        audioChunks.push(event.data);
+      };
+      
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        audioURL = URL.createObjectURL(audioBlob);
+        
+        // Calculate duration
+        recordingDuration = (Date.now() - recordingStartTime) / 1000;
+        
+        // Save as temporary preview before uploading
+        selectedRecording = {
+          id: 'preview',
+          timestamp: new Date().toLocaleString(),
+          audioURL: audioURL,
+          duration: recordingDuration
+        };
+      };
+      
+      recordingStartTime = Date.now();
+      recorder.start();
+      isRecording = true;
+    } catch (e) {
+      error = e.message;
+    }
+  }
+  
+  function stopRecording() {
+    if (recorder && isRecording) {
+      recorder.stop();
+      isRecording = false;
+    }
+  }
+  
+  async function saveRecording() {
+    if (!audioURL) return;
+    
+    try {
+      // Create form data
+      const formData = new FormData();
+      const audioBlob = await fetch(audioURL).then(r => r.blob());
+      formData.append('file', audioBlob, `recording_${Date.now()}.wav`);
+      formData.append('duration', recordingDuration.toString());
+      
+      // Send to server
+      const response = await fetch('http://localhost:8000/api/audio', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      // Add to recordings list with local URL until page reload
+      result.recording.audioURL = audioURL;
+      recordings = [...recordings, result.recording];
+      
+      // Clear current recording
+      audioURL = '';
+      selectedRecording = result.recording;
+    } catch (e) {
+      error = e.message;
+    }
+  }
+  
+  async function playRecording(recording) {
+    selectedRecording = recording;
+    
+    // If it's a saved recording without local URL, fetch from server
+    if (!recording.audioURL && recording.id !== 'preview') {
+      try {
+        // This will trigger browser to download and play the file
+        window.open(`http://localhost:8000/api/audio/${recording.id}`, '_blank');
+      } catch (e) {
+        error = e.message;
+      }
+    }
+  }
+  
+  function formatDuration(seconds) {
+    if (!seconds) return '00:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+</script>
+
+<div class="audio-recorder">
+  <h2>Advanced Audio Recorder</h2>
+  
+  {#if error}
+    <div class="error">Error: {error}</div>
+  {/if}
+  
+  <div class="controls">
+    {#if isRecording}
+      <button on:click={stopRecording} class="stop">Stop Recording</button>
+      <div class="recording-indicator">Recording...</div>
+    {:else}
+      <button on:click={startRecording} class="record">Start Recording</button>
+    {/if}
+  </div>
+  
+  {#if audioURL}
+    <div class="playback">
+      <h3>Preview Recording ({formatDuration(recordingDuration)})</h3>
+      <audio src={audioURL} controls></audio>
+      <button on:click={saveRecording} class="save">Save Recording</button>
+    </div>
+  {/if}
+  
+  <div class="recordings-library">
+    <h3>Recordings Library</h3>
+    
+    {#if loadingRecordings}
+      <p>Loading recordings...</p>
+    {:else if recordings.length === 0}
+      <p>No recordings saved yet.</p>
+    {:else}
+      <div class="recordings-list">
+        {#each recordings as recording}
+          <div 
+            class="recording-item" 
+            class:selected={selectedRecording && selectedRecording.id === recording.id}
+            on:click={() => playRecording(recording)}
+          >
+            <div class="recording-info">
+              <div class="recording-title">Recording {recording.timestamp}</div>
+              <div class="recording-duration">{formatDuration(recording.duration)}</div>
+            </div>
+            {#if recording.audioURL}
+              <audio src={recording.audioURL} controls></audio>
+            {:else}
+              <button class="play-btn" on:click|stopPropagation={() => playRecording(recording)}>
+                Play
+              </button>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
+</div>
+
+<style>
+  .audio-recorder {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    margin: 20px 0;
+    max-width: 600px;
+  }
+  
+  .error {
+    color: red;
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #ffeeee;
+    border-radius: 4px;
+  }
+  
+  .controls {
+    margin: 15px 0;
+    display: flex;
+    align-items: center;
+  }
+  
+  .recording-indicator {
+    margin-left: 15px;
+    color: #cc0000;
+    font-weight: bold;
+    animation: blink 1s infinite;
+  }
+  
+  @keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+  
+  button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-right: 10px;
+  }
+  
+  .record {
+    background-color: #ff3e00;
+    color: white;
+  }
+  
+  .stop {
+    background-color: #cc0000;
+    color: white;
+  }
+  
+  .save {
+    background-color: #00cc00;
+    color: white;
+    margin-top: 10px;
+  }
+  
+  .play-btn {
+    background-color: #0066cc;
+    color: white;
+    padding: 5px 10px;
+  }
+  
+  .playback {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+  }
+  
+  .recordings-library {
+    margin-top: 30px;
+    border-top: 1px solid #ddd;
+    padding-top: 20px;
+  }
+  
+  .recordings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+  }
+  
+  .recording-item {
+    padding: 15px;
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .recording-item:hover {
+    background-color: #f5f5f5;
+  }
+  
+  .recording-item.selected {
+    border-color: #ff3e00;
+    box-shadow: 0 0 0 2px rgba(255, 62, 0, 0.2);
+  }
+  
+  .recording-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .recording-title {
+    font-weight: bold;
+  }
+  
+  .recording-duration {
+    font-size: 0.9em;
+    color: #666;
+  }
+</style>
+```
+3. Update src/routes/+page.svelte to include the new component:
+```svelte
+<script>
+  import FormElements from '$lib/components/FormElements.svelte';
+  import AudioRecorder from '$lib/components/AudioRecorder.svelte';
+  import AudioRecorderAdvanced from '$lib/components/AudioRecorderAdvanced.svelte';
+  
+  let myText = 'Edit me!';
+  let myOptions = ['Svelte', 'React', 'Vue', 'Angular'];
+  let mySelection = 'Svelte';
+</script>
+
+<h1>Form Components Demo</h1>
+
+<FormElements 
+  textValue={myText} 
+  options={myOptions} 
+  selectedOption={mySelection}
+/>
+
+<p>Parent component can access: Text = {myText}, Selection = {mySelection}</p>
+
+<AudioRecorderAdvanced />
+```
