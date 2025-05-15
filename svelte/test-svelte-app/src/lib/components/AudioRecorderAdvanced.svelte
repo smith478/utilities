@@ -1,0 +1,424 @@
+<script>
+    import { onMount } from 'svelte';
+    
+    let audioChunks = [];
+    let recorder;
+    let audioURL = '';
+    let isRecording = false;
+    let recordings = [];
+    let recordingStartTime;
+    let recordingDuration = 0;
+    let selectedRecording = null;
+    let loadingRecordings = true;
+    let error = null;
+    let transcriptionPolling = new Set(); // Track which recordings are being polled
+    
+    onMount(async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/audio');
+        const data = await response.json();
+        recordings = data.recordings;
+        
+        // Start polling for transcriptions that are in progress
+        recordings.forEach(recording => {
+          if (recording.transcription === "Transcribing...") {
+            startTranscriptionPolling(recording.id);
+          }
+        });
+        
+        loadingRecordings = false;
+      } catch (e) {
+        error = e.message;
+        loadingRecordings = false;
+      }
+    });
+    
+    async function startRecording() {
+      try {
+        audioChunks = [];
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recorder = new MediaRecorder(stream);
+        
+        recorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+        
+        recorder.onstop = () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          audioURL = URL.createObjectURL(audioBlob);
+          
+          // Calculate duration
+          recordingDuration = (Date.now() - recordingStartTime) / 1000;
+          
+          // Save as temporary preview before uploading
+          selectedRecording = {
+            id: 'preview',
+            timestamp: new Date().toLocaleString(),
+            audioURL: audioURL,
+            duration: recordingDuration,
+            transcription: null
+          };
+        };
+        
+        recordingStartTime = Date.now();
+        recorder.start();
+        isRecording = true;
+      } catch (e) {
+        error = e.message;
+      }
+    }
+    
+    function stopRecording() {
+      if (recorder && isRecording) {
+        recorder.stop();
+        isRecording = false;
+      }
+    }
+    
+    async function saveRecording() {
+      if (!audioURL) return;
+      
+      try {
+        // Create form data
+        const formData = new FormData();
+        const audioBlob = await fetch(audioURL).then(r => r.blob());
+        formData.append('file', audioBlob, `recording_${Date.now()}.wav`);
+        formData.append('duration', recordingDuration.toString());
+        
+        // Send to server
+        const response = await fetch('http://localhost:8000/api/audio', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        // Add to recordings list with local URL until page reload
+        result.recording.audioURL = audioURL;
+        recordings = [...recordings, result.recording];
+        
+        // Start polling for transcription
+        startTranscriptionPolling(result.recording.id);
+        
+        // Clear current recording
+        audioURL = '';
+        selectedRecording = result.recording;
+      } catch (e) {
+        error = e.message;
+      }
+    }
+    
+    function startTranscriptionPolling(recordingId) {
+      if (transcriptionPolling.has(recordingId)) return;
+      
+      transcriptionPolling.add(recordingId);
+      
+      const pollInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`http://localhost:8000/api/transcription/${recordingId}`);
+          const data = await response.json();
+          
+          // Find and update the recording
+          const index = recordings.findIndex(r => r.id === recordingId);
+          if (index !== -1) {
+            const updatedRecording = {...recordings[index], transcription: data.transcription};
+            recordings[index] = updatedRecording;
+            recordings = [...recordings]; // Trigger reactivity
+            
+            // If selected recording is this one, update it too
+            if (selectedRecording && selectedRecording.id === recordingId) {
+              selectedRecording = updatedRecording;
+            }
+            
+            // Stop polling if transcription is complete
+            if (data.transcription !== "Transcribing...") {
+              clearInterval(pollInterval);
+              transcriptionPolling.delete(recordingId);
+            }
+          }
+        } catch (e) {
+          console.error("Error polling for transcription:", e);
+        }
+      }, 2000); // Poll every 2 seconds
+    }
+    
+    async function playRecording(recording) {
+      selectedRecording = recording;
+      
+      // If it's a saved recording without local URL, fetch from server
+      if (!recording.audioURL && recording.id !== 'preview') {
+        try {
+          // This will trigger browser to download and play the file
+          window.open(`http://localhost:8000/api/audio/${recording.id}`, '_blank');
+        } catch (e) {
+          error = e.message;
+        }
+      }
+    }
+    
+    function formatDuration(seconds) {
+      if (!seconds) return '00:00';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+  </script>
+  
+  <div class="audio-recorder">
+    <h2>Advanced Audio Recorder with Transcription</h2>
+    
+    {#if error}
+      <div class="error">Error: {error}</div>
+    {/if}
+    
+    <div class="controls">
+      {#if isRecording}
+        <button on:click={stopRecording} class="stop">Stop Recording</button>
+        <div class="recording-indicator">Recording...</div>
+      {:else}
+        <button on:click={startRecording} class="record">Start Recording</button>
+      {/if}
+    </div>
+    
+    {#if audioURL}
+      <div class="playback">
+        <h3>Preview Recording ({formatDuration(recordingDuration)})</h3>
+        <audio src={audioURL} controls></audio>
+        <button on:click={saveRecording} class="save">Save Recording</button>
+      </div>
+    {/if}
+    
+    <div class="recordings-library">
+      <h3>Recordings Library</h3>
+      
+      {#if loadingRecordings}
+        <p>Loading recordings...</p>
+      {:else if recordings.length === 0}
+        <p>No recordings saved yet.</p>
+      {:else}
+        <div class="recordings-list">
+          {#each recordings as recording}
+          <div 
+            class="recording-item" 
+            class:selected={selectedRecording && selectedRecording.id === recording.id}
+            on:click={() => playRecording(recording)}
+            on:keydown={(e) => e.key === 'Enter' && playRecording(recording)}
+            tabindex="0"
+            role="button"
+            aria-label="Play recording from {recording.timestamp}"
+            >
+            <div class="recording-info">
+                <div class="recording-title">Recording {recording.timestamp}</div>
+                <div class="recording-duration">{formatDuration(recording.duration)}</div>
+            </div>
+            
+            <div class="recording-playback">
+                {#if recording.audioURL}
+                    <audio src={recording.audioURL} controls></audio>
+                {:else}
+                    <button 
+                    class="play-btn" 
+                    on:click|stopPropagation={() => playRecording(recording)}
+                    aria-label="Play audio"
+                    >
+                    Play
+                    </button>
+                {/if}
+            </div>
+            
+            <!-- Display transcription if available -->
+            {#if recording.transcription}
+                <div class="transcription-container">
+                    <h4>Transcription:</h4>
+                    <div class="transcription-text">
+                        {#if recording.transcription === "Transcribing..."}
+                            <div class="transcribing">
+                                <span>{recording.transcription}</span>
+                                <div class="loading-dots"></div>
+                            </div>
+                        {:else}
+                            {recording.transcription}
+                        {/if}
+                    </div>
+                </div>
+            {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  </div>
+  
+  <style>
+    .audio-recorder {
+      padding: 20px;
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      margin: 20px 0;
+      max-width: 600px;
+    }
+    
+    .error {
+      color: red;
+      margin-bottom: 15px;
+      padding: 10px;
+      background-color: #ffeeee;
+      border-radius: 4px;
+    }
+    
+    .controls {
+      margin: 15px 0;
+      display: flex;
+      align-items: center;
+    }
+    
+    .recording-indicator {
+      margin-left: 15px;
+      color: #cc0000;
+      font-weight: bold;
+      animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+    
+    .record {
+      background-color: #ff3e00;
+      color: white;
+    }
+    
+    .stop {
+      background-color: #cc0000;
+      color: white;
+    }
+    
+    .save {
+      background-color: #00cc00;
+      color: white;
+      margin-top: 10px;
+    }
+    
+    .play-btn {
+      background-color: #0066cc;
+      color: white;
+      padding: 5px 10px;
+    }
+    
+    .playback {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f0f0f0;
+      border-radius: 4px;
+    }
+    
+    .recordings-library {
+      margin-top: 30px;
+      border-top: 1px solid #ddd;
+      padding-top: 20px;
+    }
+    
+    .recordings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .recording-item {
+      padding: 15px;
+      background-color: #ffffff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .recording-item:hover {
+      background-color: #f5f5f5;
+    }
+    
+    .recording-item.selected {
+      border-color: #ff3e00;
+      box-shadow: 0 0 0 2px rgba(255, 62, 0, 0.2);
+    }
+    
+    .recording-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .recording-title {
+      font-weight: bold;
+    }
+    
+    .recording-duration {
+      font-size: 0.9em;
+      color: #666;
+    }
+    
+    .transcription-container {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #ddd;
+    }
+    
+    .transcription-container h4 {
+      margin: 0 0 5px 0;
+      font-size: 14px;
+      color: #555;
+    }
+    
+    .transcription-text {
+      font-size: 14px;
+      line-height: 1.4;
+      color: #333;
+      background-color: #f7f7f7;
+      padding: 8px;
+      border-radius: 4px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    
+    .transcribing {
+      display: flex;
+      align-items: center;
+      color: #666;
+    }
+    
+    .loading-dots {
+      width: 20px;
+      height: 10px;
+      margin-left: 5px;
+      position: relative;
+    }
+    
+    .loading-dots:after {
+      content: '...';
+      animation: dots 1.5s steps(4, end) infinite;
+      display: inline-block;
+      width: 20px;
+      text-align: left;
+    }
+    
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60% { content: '...'; }
+      80%, 100% { content: ''; }
+    }
+  </style>

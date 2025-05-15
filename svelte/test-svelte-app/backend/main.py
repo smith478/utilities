@@ -7,6 +7,9 @@ import os
 import shutil
 import time
 from datetime import datetime
+import asyncio
+import torch
+from transformers import pipeline
 
 app = FastAPI()
 
@@ -28,6 +31,7 @@ class AudioRecording(BaseModel):
     timestamp: str
     filename: str
     duration: Optional[float] = None
+    transcription: Optional[str] = None
 
 items = [
     {"name": "Item 1", "value": "Value 1"},
@@ -40,6 +44,40 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 
 # Store audio metadata
 recordings = []
+
+# Initialize ASR pipeline
+# Using whisper-small as it has good performance on Mac M1
+# Note: This will download the model on first run
+asr_pipeline = None
+
+def initialize_asr():
+    global asr_pipeline
+    # We're using Whisper small model which works well on M1 Macs
+    asr_pipeline = pipeline(
+        "automatic-speech-recognition",
+        model="openai/whisper-small",
+        device="mps" if torch.backends.mps.is_available() else "cpu"
+    )
+    print(f"ASR model initialized on device: {'MPS (Apple Silicon)' if torch.backends.mps.is_available() else 'CPU'}")
+
+# Initialize ASR in the background
+@app.on_event("startup")
+async def startup_event():
+    # Run in a separate thread to avoid blocking startup
+    asyncio.create_task(async_initialize_asr())
+
+async def async_initialize_asr():
+    # Run the CPU-bound operation in a thread pool
+    await asyncio.to_thread(initialize_asr)
+
+async def transcribe_audio(file_path):
+    if asr_pipeline is None:
+        print("ASR model not yet initialized, initializing now...")
+        await asyncio.to_thread(initialize_asr)
+    
+    # Run transcription in a thread pool to avoid blocking
+    result = await asyncio.to_thread(asr_pipeline, file_path)
+    return result["text"]
 
 @app.get("/")
 def read_root():
@@ -67,16 +105,43 @@ async def upload_audio(file: UploadFile = File(...), duration: Optional[float] =
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    # Save metadata
+    # Transcribe the audio asynchronously
+    transcription = "Transcribing..." # Initial state
+    
+    # Create recording object
     recording = AudioRecording(
         id=recording_id,
         timestamp=timestamp,
         filename=filename,
-        duration=duration
+        duration=duration,
+        transcription=transcription
     )
+    
+    # Add to recordings list
     recordings.append(recording.dict())
     
+    # Start async transcription
+    asyncio.create_task(update_transcription(recording_id, file_path))
+    
     return {"status": "success", "recording": recording.dict()}
+
+async def update_transcription(recording_id, file_path):
+    try:
+        # Perform actual transcription
+        transcription = await transcribe_audio(file_path)
+        
+        # Update recording with transcription
+        for rec in recordings:
+            if rec["id"] == recording_id:
+                rec["transcription"] = transcription
+                break
+    except Exception as e:
+        # Handle errors
+        error_message = f"Transcription error: {str(e)}"
+        for rec in recordings:
+            if rec["id"] == recording_id:
+                rec["transcription"] = error_message
+                break
 
 @app.get("/api/audio")
 def get_recordings():
@@ -93,5 +158,13 @@ def get_audio_file(recording_id: str):
                     media_type="audio/wav", 
                     filename=rec["filename"]
                 )
+    
+    return {"error": "Recording not found"}, 404
+
+@app.get("/api/transcription/{recording_id}")
+def get_transcription(recording_id: str):
+    for rec in recordings:
+        if rec["id"] == recording_id:
+            return {"transcription": rec.get("transcription", "Not available")}
     
     return {"error": "Recording not found"}, 404

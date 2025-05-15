@@ -2,3 +2,8 @@ fastapi
 pydantic
 python-multipart
 uvicorn
+torch
+transformers
+soundfile
+torchaudio
+accelerate
