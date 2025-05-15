@@ -1,10 +1,16 @@
 <script>
     import { onMount } from 'svelte';
     
+    // Configuration for pause detection
+    const PAUSE_DETECTION_THRESHOLD = -45; // dB threshold to consider silence
+    const PAUSE_DURATION_THRESHOLD = 1000; // ms of silence to consider it a pause
+    const RESTART_DELAY = 10; // ms delay before restarting recording after pause
+    
     let audioChunks = [];
     let recorder;
     let audioURL = '';
     let isRecording = false;
+    let isAutoPaused = false;
     let recordings = [];
     let recordingStartTime;
     let recordingDuration = 0;
@@ -12,6 +18,15 @@
     let loadingRecordings = true;
     let error = null;
     let transcriptionPolling = new Set(); // Track which recordings are being polled
+    
+    // For pause detection
+    let audioContext;
+    let analyser;
+    let mediaStreamSource;
+    let audioStream;
+    let pauseDetectionInterval;
+    let silenceStart = null;
+    let sessionActive = false; // Tracks if a recording session is active (for auto restart)
     
     onMount(async () => {
       try {
@@ -33,31 +48,158 @@
       }
     });
     
+    function initializeAudioAnalysis(stream) {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0.8;
+        
+        mediaStreamSource = audioContext.createMediaStreamSource(stream);
+        mediaStreamSource.connect(analyser);
+        
+        startPauseDetection();
+      } catch (e) {
+        console.error("Error initializing audio analysis:", e);
+      }
+    }
+    
+    function startPauseDetection() {
+      if (pauseDetectionInterval) {
+        clearInterval(pauseDetectionInterval);
+      }
+      
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      
+      pauseDetectionInterval = setInterval(() => {
+        if (!isRecording || !sessionActive) return;
+        
+        analyser.getByteFrequencyData(dataArray);
+        
+        // Calculate average volume level
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / dataArray.length;
+        
+        // Convert to decibels (rough approximation)
+        const db = average === 0 ? -100 : 20 * Math.log10(average / 255);
+        
+        // Detect silence
+        if (db < PAUSE_DETECTION_THRESHOLD) {
+          if (!silenceStart) {
+            silenceStart = Date.now();
+          } else if (Date.now() - silenceStart > PAUSE_DURATION_THRESHOLD) {
+            // We've detected a pause
+            handlePauseDetected();
+          }
+        } else {
+          silenceStart = null;
+        }
+      }, 100); // Check every 100ms
+    }
+    
+    function handlePauseDetected() {
+      if (isAutoPaused || !isRecording) return;
+      
+      console.log("Pause detected - stopping current recording");
+      isAutoPaused = true;
+      stopRecording(true);
+      
+      // Auto restart after a short delay
+      setTimeout(() => {
+        if (sessionActive) {
+          console.log("Auto-restarting recording after pause");
+          startRecording();
+          isAutoPaused = false;
+        }
+      }, RESTART_DELAY);
+    }
+    
+    function stopPauseDetection() {
+      if (pauseDetectionInterval) {
+        clearInterval(pauseDetectionInterval);
+        pauseDetectionInterval = null;
+      }
+      
+      silenceStart = null;
+      
+      if (audioContext && audioContext.state !== 'closed') {
+        mediaStreamSource?.disconnect();
+      }
+    }
+    
+    async function startSession() {
+      sessionActive = true;
+      await startRecording();
+    }
+    
+    function endSession() {
+      sessionActive = false;
+      stopRecording(false); // Don't auto-restart
+      stopPauseDetection();
+      
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+        audioStream = null;
+      }
+      
+      if (audioContext && audioContext.state !== 'closed') {
+        audioContext.close();
+      }
+    }
+    
     async function startRecording() {
       try {
         audioChunks = [];
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        recorder = new MediaRecorder(stream);
+        
+        // Reuse existing stream if possible, otherwise request a new one
+        if (!audioStream) {
+          audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          
+          // Initialize audio analysis for pause detection
+          initializeAudioAnalysis(audioStream);
+        }
+        
+        recorder = new MediaRecorder(audioStream);
         
         recorder.ondataavailable = (event) => {
           audioChunks.push(event.data);
         };
         
-        recorder.onstop = () => {
+        recorder.onstop = async () => {
+          // Don't process empty recordings
+          if (audioChunks.length === 0 || (audioChunks.length === 1 && audioChunks[0].size === 0)) {
+            console.log("Empty recording detected, skipping");
+            return;
+          }
+          
           const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
           audioURL = URL.createObjectURL(audioBlob);
           
           // Calculate duration
           recordingDuration = (Date.now() - recordingStartTime) / 1000;
           
-          // Save as temporary preview before uploading
-          selectedRecording = {
-            id: 'preview',
-            timestamp: new Date().toLocaleString(),
-            audioURL: audioURL,
-            duration: recordingDuration,
-            transcription: null
-          };
+          if (recordingDuration < 0.5) {
+            console.log("Recording too short, skipping");
+            return;
+          }
+          
+          // For auto-detected pauses, immediately save the recording
+          if (isAutoPaused && sessionActive) {
+            await saveRecordingToServer(audioBlob, recordingDuration);
+            audioURL = ''; // Clear URL since we've already saved it
+          } else {
+            // For manual stops, show preview
+            selectedRecording = {
+              id: 'preview',
+              timestamp: new Date().toLocaleString(),
+              audioURL: audioURL,
+              duration: recordingDuration,
+              transcription: null
+            };
+          }
         };
         
         recordingStartTime = Date.now();
@@ -68,22 +210,23 @@
       }
     }
     
-    function stopRecording() {
+    function stopRecording(autoTriggered = false) {
       if (recorder && isRecording) {
         recorder.stop();
         isRecording = false;
+        
+        if (!autoTriggered) {
+          sessionActive = false;
+        }
       }
     }
     
-    async function saveRecording() {
-      if (!audioURL) return;
-      
+    async function saveRecordingToServer(blob, duration) {
       try {
         // Create form data
         const formData = new FormData();
-        const audioBlob = await fetch(audioURL).then(r => r.blob());
-        formData.append('file', audioBlob, `recording_${Date.now()}.wav`);
-        formData.append('duration', recordingDuration.toString());
+        formData.append('file', blob, `recording_${Date.now()}.wav`);
+        formData.append('duration', duration.toString());
         
         // Send to server
         const response = await fetch('http://localhost:8000/api/audio', {
@@ -93,16 +236,36 @@
         
         const result = await response.json();
         
-        // Add to recordings list with local URL until page reload
-        result.recording.audioURL = audioURL;
+        // Create local URL for immediate playback
+        const newAudioURL = URL.createObjectURL(blob);
+        result.recording.audioURL = newAudioURL;
+        
+        // Add to recordings list
         recordings = [...recordings, result.recording];
         
         // Start polling for transcription
         startTranscriptionPolling(result.recording.id);
         
+        return result.recording;
+      } catch (e) {
+        error = e.message;
+        return null;
+      }
+    }
+    
+    async function saveRecording() {
+      if (!audioURL) return;
+      
+      try {
+        const audioBlob = await fetch(audioURL).then(r => r.blob());
+        const savedRecording = await saveRecordingToServer(audioBlob, recordingDuration);
+        
         // Clear current recording
         audioURL = '';
-        selectedRecording = result.recording;
+        
+        if (savedRecording) {
+          selectedRecording = savedRecording;
+        }
       } catch (e) {
         error = e.message;
       }
@@ -162,10 +325,17 @@
       const secs = Math.floor(seconds % 60);
       return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
+    
+    // Cleanup on component unmount
+    onMount(() => {
+      return () => {
+        endSession();
+      };
+    });
   </script>
   
   <div class="audio-recorder">
-    <h2>Advanced Audio Recorder with Transcription</h2>
+    <h2>Smart Audio Recorder with Auto-Pause Detection</h2>
     
     {#if error}
       <div class="error">Error: {error}</div>
@@ -173,10 +343,14 @@
     
     <div class="controls">
       {#if isRecording}
-        <button on:click={stopRecording} class="stop">Stop Recording</button>
-        <div class="recording-indicator">Recording...</div>
+        <button on:click={endSession} class="stop">Stop Recording</button>
+        <div class="recording-indicator">Recording{#if isAutoPaused}... Paused{:else}...{/if}</div>
+      {:else if sessionActive}
+        <button on:click={endSession} class="stop">End Session</button>
+        <div class="session-active">Session active - {isAutoPaused ? 'restarting after pause' : 'waiting for audio'}</div>
       {:else}
-        <button on:click={startRecording} class="record">Start Recording</button>
+        <button on:click={startSession} class="record">Start Recording Session</button>
+        <div class="recording-info">Auto-pauses at {PAUSE_DURATION_THRESHOLD/1000}s of silence</div>
       {/if}
     </div>
     
@@ -277,6 +451,18 @@
       color: #cc0000;
       font-weight: bold;
       animation: blink 1s infinite;
+    }
+    
+    .session-active {
+      margin-left: 15px;
+      color: #008800;
+      font-weight: bold;
+    }
+    
+    .recording-info {
+      margin-left: 15px;
+      color: #666;
+      font-size: 0.9em;
     }
     
     @keyframes blink {
