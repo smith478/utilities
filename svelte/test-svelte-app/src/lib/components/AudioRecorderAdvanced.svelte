@@ -369,6 +369,68 @@
     editableTranscription = event.target.value;
   }
   
+  // Clear all transcriptions and recordings
+  async function clearAllRecordings() {
+    // Show confirmation dialog
+    const confirmed = confirm('Are you sure you want to clear all transcriptions and delete all recordings? This action cannot be undone.');
+    
+    if (!confirmed) {
+      return;
+    }
+    
+    try {
+      // Stop any active recording session
+      if (sessionActive || isRecording) {
+        endSession();
+      }
+      
+      // Clear transcription polling
+      transcriptionPolling.forEach(recordingId => {
+        // We can't directly clear intervals by recordingId, but they'll fail gracefully
+      });
+      transcriptionPolling.clear();
+      pendingTranscriptions.clear();
+      
+      // Delete all recordings from server
+      const deletePromises = recordings.map(async (recording) => {
+        try {
+          const response = await fetch(`http://localhost:8000/api/audio/${recording.id}`, {
+            method: 'DELETE'
+          });
+          
+          if (!response.ok) {
+            console.warn(`Failed to delete recording ${recording.id} from server`);
+          }
+        } catch (e) {
+          console.warn(`Error deleting recording ${recording.id}:`, e);
+        }
+      });
+      
+      // Wait for all delete operations to complete (but don't fail if some fail)
+      await Promise.allSettled(deletePromises);
+      
+      // Clear all local state
+      recordings = [];
+      selectedRecording = null;
+      concatenatedTranscription = '';
+      editableTranscription = '';
+      audioURL = '';
+      
+      // Clean up any local object URLs
+      recordings.forEach(recording => {
+        if (recording.audioURL && recording.audioURL.startsWith('blob:')) {
+          URL.revokeObjectURL(recording.audioURL);
+        }
+      });
+      
+      console.log('All recordings cleared successfully');
+      
+    } catch (e) {
+      error = `Error clearing recordings: ${e.message}`;
+      console.error('Error clearing recordings:', e);
+    }
+  }
+  
   // Cleanup on component unmount
   onMount(() => {
     return () => {
@@ -407,7 +469,12 @@
 
 <!-- New editable transcription text area -->
 <div class="transcription-editor">
-  <h3>Transcription Text</h3>
+  <div class="transcription-header">
+    <h3>Transcription Text</h3>
+    <button on:click={clearAllRecordings} class="clear-all" title="Clear all transcriptions and delete all recordings">
+      Clear All
+    </button>
+  </div>
   {#if pendingTranscriptions.size > 0}
     <div class="pending-notice">
       Transcribing {pendingTranscriptions.size} recording{pendingTranscriptions.size > 1 ? 's' : ''}...
@@ -559,6 +626,17 @@ button {
   padding: 5px 10px;
 }
 
+.clear-all {
+  background-color: #dc3545;
+  color: white;
+  padding: 8px 16px;
+  font-size: 0.9em;
+}
+
+.clear-all:hover {
+  background-color: #c82333;
+}
+
 .playback {
   margin-top: 20px;
   padding: 15px;
@@ -571,6 +649,17 @@ button {
   padding: 15px;
   background-color: #f0f0f0;
   border-radius: 4px;
+}
+
+.transcription-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.transcription-header h3 {
+  margin: 0;
 }
 
 .transcription-editor textarea {

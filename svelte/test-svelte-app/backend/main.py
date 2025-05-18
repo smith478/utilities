@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -159,7 +159,70 @@ def get_audio_file(recording_id: str):
                     filename=rec["filename"]
                 )
     
-    return {"error": "Recording not found"}, 404
+    raise HTTPException(status_code=404, detail="Recording not found")
+
+@app.delete("/api/audio/{recording_id}")
+def delete_recording(recording_id: str):
+    """Delete a specific recording and its file"""
+    global recordings
+    
+    # Find the recording
+    recording_to_delete = None
+    for i, rec in enumerate(recordings):
+        if rec["id"] == recording_id:
+            recording_to_delete = recordings.pop(i)
+            break
+    
+    if not recording_to_delete:
+        raise HTTPException(status_code=404, detail="Recording not found")
+    
+    # Delete the physical file
+    file_path = os.path.join(AUDIO_DIR, recording_to_delete["filename"])
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+            print(f"Deleted file: {file_path}")
+        except OSError as e:
+            print(f"Error deleting file {file_path}: {e}")
+            # Don't raise an error here since we already removed from recordings list
+    
+    return {"status": "success", "message": f"Recording {recording_id} deleted"}
+
+@app.delete("/api/audio")
+def clear_all_recordings():
+    """Delete all recordings and their files"""
+    global recordings
+    
+    deleted_count = 0
+    failed_deletes = []
+    
+    # Delete all physical files
+    for rec in recordings:
+        file_path = os.path.join(AUDIO_DIR, rec["filename"])
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                deleted_count += 1
+                print(f"Deleted file: {file_path}")
+            except OSError as e:
+                print(f"Error deleting file {file_path}: {e}")
+                failed_deletes.append(rec["filename"])
+    
+    # Clear the recordings list
+    recordings_count = len(recordings)
+    recordings.clear()
+    
+    if failed_deletes:
+        return {
+            "status": "partial_success",
+            "message": f"Cleared {recordings_count} recordings from database, deleted {deleted_count} files",
+            "failed_deletes": failed_deletes
+        }
+    else:
+        return {
+            "status": "success", 
+            "message": f"Successfully cleared {recordings_count} recordings and deleted {deleted_count} files"
+        }
 
 @app.get("/api/transcription/{recording_id}")
 def get_transcription(recording_id: str):
@@ -167,4 +230,4 @@ def get_transcription(recording_id: str):
         if rec["id"] == recording_id:
             return {"transcription": rec.get("transcription", "Not available")}
     
-    return {"error": "Recording not found"}, 404
+    raise HTTPException(status_code=404, detail="Recording not found")
