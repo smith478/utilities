@@ -1,0 +1,35 @@
+FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Install system dependencies that might be needed by NeMo or for audio processing
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    wget \
+    libsndfile1 \
+    # Add any other system dependencies your application or NeMo might require
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the requirements file into the container
+COPY requirements_gpu.txt .
+
+# Install Python dependencies
+# Using --no-cache-dir to reduce image size
+RUN pip install --no-cache-dir -r requirements_gpu.txt
+
+# Copy your application code into the container
+COPY main_gpu.py .
+
+# Create the directory for audio file storage inside the container
+# This directory will be mapped to a host volume for persistence
+RUN mkdir -p audio_files
+
+# Expose the port your FastAPI application will run on
+EXPOSE 8000
+
+# Command to run Uvicorn server
+# It will listen on all network interfaces within the container (0.0.0.0)
+# The --reload flag is generally not used in production images, but can be kept for consistency if desired for dev.
+# For production, you might remove --reload and increase --workers.
+CMD ["uvicorn", "main_gpu:app", "--host", "0.0.0.0", "--port", "8000"]

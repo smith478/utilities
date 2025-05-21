@@ -1,0 +1,9 @@
+fastapi
+pydantic
+python-multipart
+uvicorn
+transformers
+soundfile
+torchaudio
+accelerate
+nemo_toolkit[asr]>=1.20.0
