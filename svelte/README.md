@@ -835,3 +835,19 @@ Update `src/lib/components/AudioRecorderAdvanced.svelte`:
 
 <AudioRecorderAdvanced />
 ```
+
+# Speech to text with Parakeet
+
+We will set this up assuming that the backend application is running on a separate machine. This can be convenient if you want a server with a GPU to run the core ASR model.
+
+To run the frontend application with local backend we can use:
+```bash
+npm run dev -- --open
+```
+Now if we want to run a remote backend (on the same network), use:
+```bash
+VITE_BACKEND_URL=http://<DESKTOP_IP>:8000 npm run dev -- --open
+
+# For example
+VITE_BACKEND_URL=http://192.168.1.100:8000 npm run dev -- --open
+```

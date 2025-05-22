@@ -1,4 +1,9 @@
 <script>
+  import { browser } from '$app/environment';
+
+  // Get backend URL from environment variable, fallback to localhost
+  const BACKEND_URL = browser ? (import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000') : 'http://localhost:8000';
+  
   import { onMount } from 'svelte';
   
   // Configuration for pause detection
@@ -35,7 +40,7 @@
   
   onMount(async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/audio');
+      const response = await fetch(`${BACKEND_URL}/api/audio`);
       const data = await response.json();
       recordings = data.recordings;
       
@@ -241,7 +246,7 @@
       formData.append('duration', duration.toString());
       
       // Send to server
-      const response = await fetch('http://localhost:8000/api/audio', {
+      const response = await fetch(`${BACKEND_URL}/api/audio`, {
         method: 'POST',
         body: formData
       });
@@ -293,7 +298,7 @@
     
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/transcription/${recordingId}`);
+        const response = await fetch(`${BACKEND_URL}/api/transcription/${recordingId}`);
         const data = await response.json();
         
         // Find and update the recording
@@ -350,7 +355,7 @@
     if (!recording.audioURL && recording.id !== 'preview') {
       try {
         // This will trigger browser to download and play the file
-        window.open(`http://localhost:8000/api/audio/${recording.id}`, '_blank');
+        window.open(`${BACKEND_URL}/api/audio/${recording.id}`, '_blank');
       } catch (e) {
         error = e.message;
       }
@@ -394,7 +399,7 @@
       // Delete all recordings from server
       const deletePromises = recordings.map(async (recording) => {
         try {
-          const response = await fetch(`http://localhost:8000/api/audio/${recording.id}`, {
+          const response = await fetch(`${BACKEND_URL}/api/audio/${recording.id}`, {
             method: 'DELETE'
           });
           
