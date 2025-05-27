@@ -851,3 +851,8 @@ VITE_BACKEND_URL=http://<DESKTOP_IP>:8000 npm run dev -- --open
 # For example
 VITE_BACKEND_URL=http://192.168.1.100:8000 npm run dev -- --open
 ```
+
+## TODO 
+- Refactor the application - especially the audio recorder component
+- X Add dark mode
+- Update the UI to have findings/recommendations
