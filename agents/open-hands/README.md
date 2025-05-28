@@ -54,6 +54,14 @@ docker run -it --rm --pull=always \
 ```
 
 ## Running on a GPU
+If Ollama was running you will need to stop the current Ollama service and restart it with the correct environment variable.
+```bash
+sudo systemctl stop ollama
+export OLLAMA_HOST=0.0.0.0:11434
+ollama serve
+```
+
+Now we can start the docker container.
 ```bash
 docker run -it --rm --pull=always \
     --gpus all \
@@ -88,7 +96,7 @@ If you also want your local code mounted in the GPU-enabled container:
 ```bash
 export SANDBOX_VOLUMES=/path/to/your/code:/workspace:rw
 
-docker run -it --rm --pull=always \
+sudo docker run -it --rm --pull=always \
     --gpus all \
     -e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.39-nikolaik \
     -e LOG_ALL_EVENTS=true \
