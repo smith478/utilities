@@ -111,3 +111,5 @@ sudo docker run -it --rm --pull=always \
     --name openhands-app \
     docker.all-hands.dev/all-hands-ai/openhands:0.39
 ```
+
+NOTE: The GPU option above does not seem to work. An alternative approach is to use vLLM to create an OpenAI-compatible endpoint and then connect to that.
