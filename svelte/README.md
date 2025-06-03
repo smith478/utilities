@@ -856,3 +856,4 @@ VITE_BACKEND_URL=http://192.168.1.100:8000 npm run dev -- --open
 - Refactor the application - especially the audio recorder component
 - X Add dark mode
 - Update the UI to have findings/recommendations
+- Try to use OpenHands with Devstral to make the updates above
