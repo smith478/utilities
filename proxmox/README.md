@@ -32,8 +32,22 @@ OR
 poweroff
 ```
 
+Or from the web UI go to `Node -> Shutdown`
+
 ## Web console overview
+
+The web console will be accessible on your LAN using the IP address on port 8006 (IP:8006).
+
+On the left sidebar under `Datacenter` you should see the server that was created e.g. `pve1`. Under the `Summary` you can see high level information about the hardware and use on the server. A shell and system setting are also available.
+
+Make sure to install the available updates. You may need to click `Refresh`. Unless you buy the enterprise version this will appear to error out, but it is only due to not being able to connect to the paid repository. After refreshing, you can then click `Upgrade`.
+
+Note there are buttons at the top right to create a new virtual machine and another to create a container.
+
 ## VMs or containers?
+
+Containers consume fewer resources, especially RAM. If the host server has less resources then it may be better to go with containers over VMs. Typically if you can get away with using a container, you should since they consume fewer resources. One big benefit of VMs is that if you're running a cluster with multiple host servers and you want to migrate a VM to a different host, you can do a live migration and keep the VM running (and any applications it's supporting); whereas with containers they will need to shutdown during a migration. Also note that not all applications will run in a container.
+
 ## Launching VMs
 ## Creating VM templates
 ## Launching containers
