@@ -46,9 +46,25 @@ Note there are buttons at the top right to create a new virtual machine and anot
 
 ## VMs or containers?
 
-Containers consume fewer resources, especially RAM. If the host server has less resources then it may be better to go with containers over VMs. Typically if you can get away with using a container, you should since they consume fewer resources. One big benefit of VMs is that if you're running a cluster with multiple host servers and you want to migrate a VM to a different host, you can do a live migration and keep the VM running (and any applications it's supporting); whereas with containers they will need to shutdown during a migration. Also note that not all applications will run in a container.
+Containers consume fewer resources, especially RAM. If the host server has less resources then it may be better to go with containers over VMs. Typically if you can get away with using a container, you should since they consume fewer resources. 
+One big benefit of VMs is that if you're running a cluster with multiple host servers and you want to migrate a VM to a different host, you can do a live migration and keep the VM running (and any applications it's supporting); whereas with containers they will need to shutdown during a migration. Also note that not all applications will run in a container.
 
 ## Launching VMs
+
+- On the top right in the web UI click `Create VM`
+- Choose a node (in the case of a single node, there will only be 1 option), an ID (this needs to be unique and it may be nice to have a range for VMs, a range for Containers, a range for VM templates, etc.), and a name which should reflect its purpose.
+- Next we will go to OS and we need to select an ISO image, however we currently have none
+    - Click the dropdown on your node `pve1` under `Datacenter`, then click on local (pve1), then click on `ISO Images`
+    - We will use the `Download from URL` button but we first need to get the URL for the ISO image.
+    - Go to [ubuntu.com](ubuntu.com) and navigate to download ubuntu server section and find the URL for the ISO image (ChatGPT or any other LLM with web search can help find this quickly) e.g. https://releases.ubuntu.com/noble/ubuntu-24.04.2-live-server-amd64.iso
+    - Copy this URL into the field in `Download from URL` and click `Query URL` and then `Download`
+- With the ISO image downloaded we can go back through `Create VM` and now use this ISO image for the OS
+- We will use the defaults for the `System` settings
+- For `Disks` we will select/check the `Discard` option to help with storage cleanup/management on the underlying hard drive. For the disk size, we will use 16 GB.
+- For `CPU` we may want to use more than 1 core for heavier compute applications, especially if it's running slowly, otherwise we can stick with 1.
+- For `Memory` we will keep the 2 GB default.
+- For now we will also keep the default `Network` settings.
+
 ## Creating VM templates
 ## Launching containers
 ## Creating container templates
