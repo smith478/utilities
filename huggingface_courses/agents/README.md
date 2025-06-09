@@ -11,3 +11,8 @@ model = LiteLLMModel(
     num_ctx=8192,
 )
 ```
+
+To use LiteLLM, be sure to install the package:
+```bash
+pip install litellm
+```
