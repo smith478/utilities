@@ -64,8 +64,100 @@ One big benefit of VMs is that if you're running a cluster with multiple host se
 - For `CPU` we may want to use more than 1 core for heavier compute applications, especially if it's running slowly, otherwise we can stick with 1.
 - For `Memory` we will keep the 2 GB default.
 - For now we will also keep the default `Network` settings.
+- We can now click on the VM we have created (named `100`) and here are a few important settings:
+    - Start at boot: this will determine if the VM automatically starts up when Proxmox boots up.
+    - Start/shutdown order: this will help you control the order that different VMs are started/stopped. (e.g. if you have a database server with other VMs that rely on that database server)
+- To start the VM click on `console`, then you can click the power button or simply `Start Now`
+- On the initial startup you will have to install Ubuntu server (sticking almost entirely with defaults is fine for now)
+
+Once the VM boots up and we log in, we will use a terminal (outside of proxmox) to connect (SSH) to this VM (node) using its IP address. We can use the following command:
+```bash
+ssh <USERNAME>@<IP ADDRESS>
+```
+
+We should now update ubuntu server:
+```bash
+sudo apt update && sudo apt dist-upgrade
+```
+
+Now it is a good idea to install the QEMU guest agent:
+```bash
+sudo apt install qemu-guest-agent
+```
+
+Before we start the service we need to go back to the proxmox UI, go to our VM and click on `Options`. Then `Edit` the `QEMU Guest Agent` and select `Use QEMU Guest Agent`. It will show `Enabled` in red. This indicates we need to restart the VM to actually see the change. 
+To restart we can go back to the terminal and run `sudo poweroff`. Then in the proxmox UI we can start the VM again, and we should now see (under Options) the QEMU guest agent is now enabled.
+
+We can verify this service is running:
+```bash
+systemctl status qemu-guest-agent.service 
+```
+If for some reason it was not running we could start it with:
+```bash
+systemctl status qemu-guest-agent.service
+```
+
+Since this is meant as a webserver we can install apache2:
+```bash
+sudo apt install apache2
+```
+
+After the package installs you should be able to type in the VMs IP address into a web browser and see Apache's default page.
 
 ## Creating VM templates
+
+We will start by connecting to the VM via SSH as shown above. Note that while we want to create a template the automatically duplicates the VM setup, there are certain things we don't want to duplicate like SSH keys.
+
+CloudInit is a great tool that does a number of things including creating templates that will help you set up linux servers. It can also handle things like avoiding duplication of SSH host keys.
+
+Verify that `cloud-init` is installed
+```bash
+apt search cloud-init
+```
+If it is not installed, we can install it with:
+```bash
+sudo apt install cloud-init
+```
+
+We will remove the SSH host keys so that CloudInit knows to recreate them.
+```bash
+cd /etc/ssh
+sudo rm ssh_host_*
+```
+
+We also need to remove the machine ID, which can be viewed with `cat /etc/machine-id`. It is typically not enough to simply delete this file. We need to empty out the file:
+```bash
+sudo truncate -s 0 /etc/machine-id
+```
+
+We need to check for a symbolic link 
+```bash
+ls -l /var/lib/dbus/machine-id
+```
+If you can see symlink then there's nothing further to do here. If not we can create one
+```bash
+sudo ln -s /etc/machine-id /var/lib/dbus/machine-id
+```
+
+There's a few other commands to run that will help clean the template.
+```bash
+sudo apt clean
+sudo apt autoremove
+```
+
+Go back to the proxmox UI and right click on the VM (e.g. named 100 webserver), then click on `Convert to template`.
+
+Next click on the hardware in the proxmox UI of our new template, and remove the attachment to the iso for the virtual disk. To do this, click `Edit` and then select `Do not use any media`. Now click `Add` and choose `CloudInit Drive` and choose `local-lvm` for the storage option.
+
+With CloudInit set up, we can click on `Cloud-Init` on the sidebar and edit the following fields:
+- User
+- Password
+- SSH Public Key (if you have one)
+
+Finally click `Regenerate Image` and we are done with the template.
+
+To create a VM from the template, right click on the template and choose `Clone`. For the mode typically you will want to select `Full Clone`. For storage, it's best to be explicit and choose `local-lvm`. For the name we can choose some new name (e.g. `webserver-1`)
+
 ## Launching containers
 ## Creating container templates
 ## Managing users
