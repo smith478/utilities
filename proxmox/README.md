@@ -156,9 +156,27 @@ With CloudInit set up, we can click on `Cloud-Init` on the sidebar and edit the 
 
 Finally click `Regenerate Image` and we are done with the template.
 
-To create a VM from the template, right click on the template and choose `Clone`. For the mode typically you will want to select `Full Clone`. For storage, it's best to be explicit and choose `local-lvm`. For the name we can choose some new name (e.g. `webserver-1`)
+To create a VM from the template, right click on the template and choose `Clone`. For the mode typically you will want to select `Full Clone`. For storage, it's best to be explicit and choose `local-lvm`. For the name we can choose some new name (e.g. `webserver-1`). You could continue this process and create another VM (e.g. `webserver-2`).
+
+Using the IP address of our 2 new webserver VMs we can ssh into them. Both of these will have the same hostname (i.e. `webserver`). Edit the hostname:
+```bash
+sudo nano /etc/hostname
+```
+We can then append a `-1` and `-2` to each of the webservers. Then `control` + `O`, `Enter/return` to save the file, then `control` + `X` to exit out.
+Now edit the hosts file:
+```bash
+sudo nano /etc/hosts
+```
+Similarly here we will update the current `webserver` hostname. Then reboot:
+```bash
+sudo reboot
+```
+Remember to do this with both VMs.
 
 ## Launching containers
+
+
+
 ## Creating container templates
 ## Managing users
 ## Backups and snapshots
