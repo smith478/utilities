@@ -175,7 +175,19 @@ Remember to do this with both VMs.
 
 ## Launching containers
 
+We first need to download a template. Under our `pve1` node, click on `local(pve1)` and then `CT Templates` (on the sidebar). From here click on the `Templates` button. Here you can search `ubuntu` to narrow down the list. We will choose the latest LTS version of Ubuntu, and click `Download`.
 
+Now we can click the `Create CT` button at the top. 
+- For `Hostname` we can use `webserver-ct`
+- Create a password
+- We can click `Next` and choose the (ubuntu) template that we downloaded previously.
+- For the root disk we will increase the storage to 16 GB
+- For now we will also leave the CPU cores at 1
+- We will set memory to 1024 (for both memory and swap)
+- In the Netork config we will select `DHCP` for IPv4 and IPv6
+- Leave the defaults for `DNS`
+
+This should be quick to be generated and you should now see it under the `pve1` node. We can click on it and then select `Options` from the sidebar. This gives a list of config options, we will change `Start at boot` to "yes" and leave the rest at the defaults.
 
 ## Creating container templates
 ## Managing users
