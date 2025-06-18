@@ -189,7 +189,72 @@ Now we can click the `Create CT` button at the top.
 
 This should be quick to be generated and you should now see it under the `pve1` node. We can click on it and then select `Options` from the sidebar. This gives a list of config options, we will change `Start at boot` to "yes" and leave the rest at the defaults.
 
+Note that we did not setup a username for the container. By default the username is `root`.
+
+We will now install `apache2` (note you don't need sudo since we are logged in as root):
+```bash
+apt update
+apt install apache2
+```
+
+We can get the ip address and ssh into the container:
+```bash
+ip a
+```
+Before logging in we need to add a user in the proxmox UI container console.
+```bash
+adduser dan
+```
+This will allow us to set up a password, and we can skip the further information for our user.
+We will also add our new user to the sudo group
+```bash
+usermod -aG sudo dan
+```
+On our local machine:
+```bash
+ssh dan@<CONTAINER_IP_ADDRESS>
+```
+To confirm everything worked correctly we can enter our containers IP address into our web browser and we should see the default apache webpage.
+
 ## Creating container templates
+
+Before right-clicking on our container in the proxmox UI and converting it to a template, we will do a few things that will make the process cleaner and simpler. This is essentially the same as what we did in creating the VM template.
+
+Log into the container from your local machine (as above). As we did for the VM we will make sure the ubuntu server is up to date
+```bash
+sudo apt update && sudo apt dist-upgrade
+```
+Next
+```bash
+sudo apt clean
+sudo apt autoremove
+```
+
+We will remove the SSH host keys.
+```bash
+cd /etc/ssh
+sudo rm ssh_host_*
+```
+
+We also need to remove the machine ID, which can be viewed with `cat /etc/machine-id`. It is typically not enough to simply delete this file. We need to empty out the file:
+```bash
+sudo truncate -s 0 /etc/machine-id
+```
+
+We will now shutdown the container
+```bash
+sudo poweroff
+```
+
+The icon in the proxmox UI should turn grey and the green triangle should go away. We can now right-click on the icon and select `Convert to template`.
+
+To create a container from the template, right click on the template and choose `Clone`. For the mode typically you will want to select `Full Clone`. For storage, it's best to be explicit and choose `local-lvm`. For the name we can choose some new name (e.g. `webserver-ct-1`). You could continue this process and create another container (e.g. `webserver-ct-2`).
+
+We need to reset the ssh host keys manually. We may need to do this from proxmox as we may no longer be able to ssh into the containers:
+```bash
+sudo dpkg-reconfigure openssh-server
+```
+
 ## Managing users
 ## Backups and snapshots
 ## Integrated firewall
