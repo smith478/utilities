@@ -1,3 +1,5 @@
+huggingface_courses/agents/author_documents/*
+
 *.DS_Store
 literature_review/papers/*
 
