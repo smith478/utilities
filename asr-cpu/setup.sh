@@ -1,16 +1,32 @@
 #!/bin/bash
 
-# Audio Transcription Setup Script
+# Audio Transcription Setup Script (using uv)
 # This script sets up the environment for audio transcription experiments
 
-echo "🚀 Setting up Audio Transcription Environment"
-echo "=============================================="
+echo "🚀 Setting up Audio Transcription Environment with uv"
+echo "====================================================="
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Check if uv is installed
+if ! command -v uv &> /dev/null; then
+    echo -e "${YELLOW}⚠️  uv not found. Installing uv...${NC}"
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    source $HOME/.cargo/env
+    
+    # Check if installation was successful
+    if ! command -v uv &> /dev/null; then
+        echo -e "${RED}❌ uv installation failed${NC}"
+        echo "Please install uv manually: https://docs.astral.sh/uv/getting-started/installation/"
+        exit 1
+    fi
+fi
+
+echo -e "${GREEN}✅ uv is available${NC}"
 
 # Check if running on macOS
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -38,20 +54,15 @@ mkdir -p recordings
 mkdir -p models
 mkdir -p outputs
 
-# Create virtual environment if it doesn't exist
-if [ ! -d "venv" ]; then
-    echo "🐍 Creating Python virtual environment..."
-    python3 -m venv venv
+# Initialize uv project if pyproject.toml doesn't exist
+if [ ! -f "pyproject.toml" ]; then
+    echo "🏗️  Initializing uv project..."
+    uv init --name audio-transcription --python 3.11
 fi
 
-# Activate virtual environment
-echo "🔧 Activating virtual environment..."
-source venv/bin/activate
-
-# Install Python packages
-echo "📦 Installing Python packages..."
-pip install --upgrade pip
-pip install -r requirements.txt
+# Create virtual environment and install dependencies
+echo "🐍 Creating virtual environment and installing dependencies with uv..."
+uv sync
 
 # Make scripts executable
 echo "🔐 Making scripts executable..."
@@ -59,22 +70,25 @@ chmod +x audio_recorder.py
 chmod +x transcriber_transformers.py
 chmod +x transcriber_vllm.py
 
-# Test PyAudio installation
+# Test installations using uv run
 echo "🧪 Testing PyAudio installation..."
-python3 -c "import pyaudio; print('✅ PyAudio working')" 2>/dev/null || {
+uv run python -c "import pyaudio; print('✅ PyAudio working')" 2>/dev/null || {
     echo -e "${RED}❌ PyAudio installation failed${NC}"
-    echo -e "${YELLOW}💡 Try installing with: pip install --global-option='build_ext' --global-option='-I/opt/homebrew/include' --global-option='-L/opt/homebrew/lib' pyaudio${NC}"
+    echo -e "${YELLOW}💡 This might be due to missing system dependencies. On macOS, try:${NC}"
+    echo "   brew install portaudio"
+    echo -e "${YELLOW}💡 On Linux, try:${NC}"
+    echo "   sudo apt-get install portaudio19-dev"
 }
 
 # Test torch installation
 echo "🧪 Testing PyTorch installation..."
-python3 -c "import torch; print(f'✅ PyTorch {torch.__version__} working')" 2>/dev/null || {
+uv run python -c "import torch; print(f'✅ PyTorch {torch.__version__} working')" 2>/dev/null || {
     echo -e "${RED}❌ PyTorch installation failed${NC}"
 }
 
 # Test transformers installation
 echo "🧪 Testing transformers installation..."
-python3 -c "from transformers import AutoTokenizer; print('✅ Transformers working')" 2>/dev/null || {
+uv run python -c "from transformers import AutoTokenizer; print('✅ Transformers working')" 2>/dev/null || {
     echo -e "${RED}❌ Transformers installation failed${NC}"
 }
 
@@ -85,23 +99,28 @@ echo "📋 Usage Examples:"
 echo "=================="
 echo ""
 echo "1. Record audio (manual stop):"
-echo "   ./audio_recorder.py"
+echo "   uv run ./audio_recorder.py"
 echo ""
 echo "2. Record audio (10 seconds):"
-echo "   ./audio_recorder.py -d 10"
+echo "   uv run ./audio_recorder.py -d 10"
 echo ""
 echo "3. Record with custom filename:"
-echo "   ./audio_recorder.py -f my_recording.wav"
+echo "   uv run ./audio_recorder.py -f my_recording.wav"
 echo ""
 echo "4. Transcribe with transformers:"
-echo "   ./transcriber_transformers.py recordings/recording_*.wav"
+echo "   uv run ./transcriber_transformers.py recordings/recording_*.wav"
 echo ""
 echo "5. Transcribe with vLLM (if supported):"
-echo "   ./transcriber_vllm.py recordings/recording_*.wav"
+echo "   uv run ./transcriber_vllm.py recordings/recording_*.wav"
 echo ""
-echo "6. Docker usage:"
-echo "   docker build -t audio-transcriber ."
-echo "   docker run -it --rm -v \$(pwd)/recordings:/app/recordings audio-transcriber"
+echo "6. Activate virtual environment manually:"
+echo "   source .venv/bin/activate"
+echo ""
+echo "7. Install additional packages:"
+echo "   uv add package-name"
+echo ""
+echo "8. Install development dependencies:"
+echo "   uv sync --dev"
 echo ""
 echo -e "${YELLOW}💡 Note: vLLM may have limited support on CPU-only macOS systems.${NC}"
 echo -e "${YELLOW}💡 For best results, use the transformers version first.${NC}"

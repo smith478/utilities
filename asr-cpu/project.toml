@@ -1,0 +1,71 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "audio-transcription"
+version = "0.1.0"
+description = "A comprehensive audio transcription toolkit using IBM's Granite Speech model"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    # Core ML libraries
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "transformers>=4.40.0",
+    "huggingface-hub>=0.20.0",
+    # vLLM for inference optimization
+    "vllm>=0.6.0",
+    # Audio processing
+    "pyaudio>=0.2.11",
+    "soundfile>=0.12.1",
+    "librosa>=0.10.0",
+    # Utilities
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "click>=8.0.0",
+    "pydantic>=2.0.0",
+    # Optional: For better performance
+    "accelerate>=0.20.0",
+    "optimum>=1.12.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+audio-recorder = "audio_recorder:main"
+transcriber-transformers = "transcriber_transformers:main"
+transcriber-vllm = "transcriber_vllm:main"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
