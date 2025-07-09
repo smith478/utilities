@@ -15,6 +15,8 @@ open_web_ui/.env.searxng
 
 svelte/test-svelte-app/backend/audio_files/*.wav
 
+asr-cpu/recordings/*.wav
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
