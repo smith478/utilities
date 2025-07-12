@@ -17,6 +17,10 @@ svelte/test-svelte-app/backend/audio_files/*.wav
 
 asr-cpu/recordings/*.wav
 
+granite-speech-asr/models/*
+granite-speech-asr/outputs/*
+granite-speech-asr/recordings/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

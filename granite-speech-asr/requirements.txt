@@ -1,0 +1,31 @@
+# Core ML libraries
+torch>=2.0.0
+torchaudio>=2.0.0
+transformers>=4.40.0
+huggingface-hub>=0.20.0
+accelerate>=0.20.0
+optimum>=1.12.0
+
+# Audio processing
+pyaudio>=0.2.11
+soundfile>=0.12.1
+librosa>=0.10.0
+
+# Utilities
+numpy>=1.24.0
+scipy>=1.10.0
+click>=8.0.0
+pydantic>=2.0.0
+
+# API server
+fastapi>=0.115.0
+uvicorn>=0.34.0
+python-multipart>=0.0.6
+
+# Optional: For better performance
+bitsandbytes>=0.39.0
+safetensors>=0.3.2
+
+# Development tools
+jupyter>=1.0.0
+ipywidgets>=8.0.0
