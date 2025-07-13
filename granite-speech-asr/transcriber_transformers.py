@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Audio transcription using Hugging Face Transformers with Granite Speech model.
+Enhanced with persona-specific system prompts for specialized transcription.
 """
 import torch
 import torchaudio
@@ -10,14 +11,95 @@ import os
 import time
 
 class GraniteTranscriber:
-    def __init__(self, model_name="ibm-granite/granite-speech-3.3-8b"):
+    def __init__(self, model_name="ibm-granite/granite-speech-3.3-8b", cache_dir="./models"):
         self.model_name = model_name
+        self.cache_dir = cache_dir
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.processor = None
         self.model = None
         self.tokenizer = None
         
+        # Define persona-specific system prompts
+        self.personas = {
+            "general": {
+                "name": "General Transcription",
+                "system_prompt": "Knowledge Cutoff Date: April 2024.\nToday's Date: April 9, 2025.\nYou are Granite, developed by IBM. You are a helpful AI assistant specialized in accurate speech transcription."
+            },
+            "veterinary_radiologist": {
+                "name": "Veterinary Radiologist",
+                "system_prompt": """Knowledge Cutoff Date: April 2024.
+Today's Date: April 9, 2025.
+You are Granite, developed by IBM. You are a specialized AI assistant for veterinary radiology transcription.
+
+You excel at transcribing veterinary diagnostic imaging reports with high accuracy. You understand:
+- Veterinary anatomy and physiology terminology
+- Radiological imaging terminology (X-ray, CT, MRI, ultrasound)
+- Medical report structure and formatting
+- Common veterinary conditions and findings
+- Proper medical punctuation and sentence structure
+
+When transcribing, focus on:
+- Accurate medical terminology
+- Proper anatomical references
+- Clear, professional medical language
+- Correct punctuation for medical reports
+- Distinguishing between similar-sounding medical terms
+
+Common corrections to watch for:
+- "gas" not "commas" when describing gas-filled structures
+- Proper medical punctuation (periods, not "period" spoken)
+- Accurate anatomical terms and spelling
+- Professional medical report formatting"""
+            },
+            "human_radiologist": {
+                "name": "Human Radiologist", 
+                "system_prompt": """Knowledge Cutoff Date: April 2024.
+Today's Date: April 9, 2025.
+You are Granite, developed by IBM. You are a specialized AI assistant for human radiology transcription.
+
+You excel at transcribing human diagnostic imaging reports with high accuracy. You understand:
+- Human anatomy and physiology terminology
+- Radiological imaging terminology (X-ray, CT, MRI, ultrasound, mammography)
+- Medical report structure and DICOM standards
+- Common human pathologies and findings
+- Proper medical punctuation and sentence structure
+
+When transcribing, focus on:
+- Accurate medical terminology
+- Proper anatomical references
+- Clear, professional medical language
+- Correct punctuation for medical reports
+- Distinguishing between similar-sounding medical terms"""
+            },
+            "medical_general": {
+                "name": "General Medical",
+                "system_prompt": """Knowledge Cutoff Date: April 2024.
+Today's Date: April 9, 2025.
+You are Granite, developed by IBM. You are a specialized AI assistant for general medical transcription.
+
+You excel at transcribing medical reports, notes, and documentation with high accuracy. You understand:
+- General medical terminology
+- Clinical documentation standards
+- Proper medical punctuation and formatting
+- Common medical procedures and findings
+- Professional medical language conventions
+
+When transcribing, focus on:
+- Accurate medical terminology
+- Professional medical language
+- Correct punctuation for medical documentation
+- Clear, concise medical communication"""
+            }
+        }
+        
         print(f"🔧 Initializing transcriber on device: {self.device}")
+        print(f"📁 Using cache directory: {self.cache_dir}")
+        
+    def list_personas(self):
+        """List available personas."""
+        print("\n📋 Available personas:")
+        for key, persona in self.personas.items():
+            print(f"   {key}: {persona['name']}")
         
     def load_model(self):
         """Load the model and processor."""
@@ -28,19 +110,49 @@ class GraniteTranscriber:
         start_time = time.time()
         
         try:
-            self.processor = AutoProcessor.from_pretrained(self.model_name)
+            # Set cache directory for this session
+            os.environ["HF_HOME"] = self.cache_dir
+            os.environ["TRANSFORMERS_CACHE"] = self.cache_dir
+            
+            # Try to load from cache directory first
+            self.processor = AutoProcessor.from_pretrained(
+                self.model_name,
+                cache_dir=self.cache_dir,
+                local_files_only=True  # First try local files only
+            )
             self.tokenizer = self.processor.tokenizer
             self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
                 self.model_name,
+                cache_dir=self.cache_dir,
+                local_files_only=True,  # First try local files only
                 torch_dtype=torch.float32 if self.device == "cpu" else torch.float16
             ).to(self.device)
             
-            load_time = time.time() - start_time
-            print(f"✅ Model loaded successfully in {load_time:.2f} seconds")
+            print("✅ Model loaded from local cache")
             
         except Exception as e:
-            print(f"❌ Error loading model: {e}")
-            raise
+            print(f"⚠️  Local model not found, downloading from Hugging Face: {e}")
+            try:
+                # Fallback to downloading from Hugging Face
+                self.processor = AutoProcessor.from_pretrained(
+                    self.model_name,
+                    cache_dir=self.cache_dir
+                )
+                self.tokenizer = self.processor.tokenizer
+                self.model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                    self.model_name,
+                    cache_dir=self.cache_dir,
+                    torch_dtype=torch.float32 if self.device == "cpu" else torch.float16
+                ).to(self.device)
+                
+                print("✅ Model downloaded and loaded from Hugging Face")
+                
+            except Exception as download_error:
+                print(f"❌ Error loading/downloading model: {download_error}")
+                raise
+        
+        load_time = time.time() - start_time
+        print(f"✅ Model loaded successfully in {load_time:.2f} seconds")
     
     def load_audio(self, audio_path):
         """Load and validate audio file."""
@@ -74,10 +186,17 @@ class GraniteTranscriber:
             print(f"❌ Error loading audio: {e}")
             raise
     
-    def transcribe(self, audio_path, custom_prompt=None):
-        """Transcribe audio file to text."""
+    def transcribe(self, audio_path, persona="veterinary_radiologist", custom_prompt=None):
+        """Transcribe audio file to text using specified persona."""
         # Load model if not already loaded
         self.load_model()
+        
+        # Validate persona
+        if persona not in self.personas:
+            print(f"⚠️  Unknown persona '{persona}', using 'general' instead")
+            persona = "general"
+        
+        print(f"🎭 Using persona: {self.personas[persona]['name']}")
         
         # Load audio
         wav, sr = self.load_audio(audio_path)
@@ -89,13 +208,13 @@ class GraniteTranscriber:
         start_time = time.time()
         
         try:
-            # Create chat prompt
-            prompt_text = custom_prompt or "can you transcribe the speech into a written format?"
+            # Create chat prompt with persona-specific system prompt
+            prompt_text = custom_prompt or "Please transcribe this speech into written format with high accuracy."
             
             chat = [
                 {
                     "role": "system",
-                    "content": "Knowledge Cutoff Date: April 2024.\nToday's Date: April 9, 2025.\nYou are Granite, developed by IBM. You are a helpful AI assistant",
+                    "content": self.personas[persona]['system_prompt'],
                 },
                 {
                     "role": "user",
@@ -159,23 +278,31 @@ class GraniteTranscriber:
 @click.command()
 @click.argument('audio_path', type=click.Path(exists=True))
 @click.option('--model', '-m', default="ibm-granite/granite-speech-3.3-8b", help='Hugging Face model name')
+@click.option('--cache-dir', '-c', default="./models", help='Cache directory for models (default: ./models)')
+@click.option('--persona', '-r', default="veterinary_radiologist", help='Transcription persona (default: veterinary_radiologist)')
+@click.option('--list-personas', is_flag=True, help='List available personas and exit')
 @click.option('--prompt', '-p', default=None, help='Custom transcription prompt')
 @click.option('--output', '-o', default=None, help='Output file for transcription (default: print to stdout)')
-def main(audio_path, model, prompt, output):
-    """Transcribe audio file using Granite Speech model."""
+def main(audio_path, model, cache_dir, persona, list_personas, prompt, output):
+    """Transcribe audio file using Granite Speech model with persona-specific prompts."""
+    
+    # Initialize transcriber
+    transcriber = GraniteTranscriber(model_name=model, cache_dir=cache_dir)
+    
+    # List personas if requested
+    if list_personas:
+        transcriber.list_personas()
+        return
     
     try:
-        # Initialize transcriber
-        transcriber = GraniteTranscriber(model_name=model)
-        
         # Perform transcription
-        transcription = transcriber.transcribe(audio_path, custom_prompt=prompt)
+        transcription = transcriber.transcribe(audio_path, persona=persona, custom_prompt=prompt)
         
         # Output results
         print("\n" + "="*50)
         print("📝 TRANSCRIPTION RESULT:")
         print("="*50)
-        print(transcription.upper())
+        print(transcription)
         print("="*50)
         
         # Save to file if requested
