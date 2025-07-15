@@ -20,6 +20,9 @@ RUN apt-get update && apt-get install -y \
     libasound2-dev \
     curl \
     wget \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Python alias and fix pip

@@ -68,8 +68,13 @@ docker run -it --gpus all \
 python model_download.py
 python api_server.py
 
+# Or for a specific model
+python model_download.py --model nvidia/parakeet-tdt-0.6b-v2
+
 # Run transcription on a wav file in /recordings
 python transcriber_transformers.py recordings/recording_*.wav
+
+python transcriber_transformers.py recordings/recording_20250714_215223.wav
 ```
 
 ## Usage Examples
