@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  granite-speech-backend:
+    build: .
+    image: granite-speech-asr:latest
+    container_name: granite-speech-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./audio_files:/granite-speech-asr/audio_files
+      - ./models:/granite-speech-asr/models
+      - ./outputs:/granite-speech-asr/outputs
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/granite-speech-asr
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - granite-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  granite-network:
+    driver: bridge
