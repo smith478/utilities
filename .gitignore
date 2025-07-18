@@ -21,6 +21,10 @@ granite-speech-asr/models/*
 granite-speech-asr/outputs/*
 granite-speech-asr/recordings/*
 
+svelte/test-svelte-app/backend-gpu-vm/models/*
+svelte/test-svelte-app/backend-gpu-vm/outputs/*
+svelte/test-svelte-app/backend-gpu-vm/recordings/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

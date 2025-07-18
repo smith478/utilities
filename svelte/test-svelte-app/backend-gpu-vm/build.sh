@@ -23,7 +23,7 @@ mkdir -p audio_files models outputs
 
 # Build the Docker image
 echo "🔨 Building Docker image..."
-docker-compose build granite-speech-backend
+docker compose build granite-speech-backend
 
 # Verify the build
 if [ $? -eq 0 ]; then

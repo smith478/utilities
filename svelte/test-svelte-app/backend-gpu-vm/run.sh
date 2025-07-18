@@ -23,12 +23,12 @@ mkdir -p audio_files models outputs
 # Stop existing container if running
 if docker ps -q -f name=granite-speech-backend > /dev/null; then
     echo "🛑 Stopping existing container..."
-    docker-compose down
+    docker compose down
 fi
 
 # Start the service
 echo "🔄 Starting backend service..."
-docker-compose up -d granite-speech-backend
+docker compose up -d granite-speech-backend
 
 # Wait for the service to be healthy
 echo "⏳ Waiting for backend to be ready..."
@@ -53,7 +53,7 @@ if [ $counter -ge $timeout ]; then
     echo ""
     echo "❌ Backend failed to start within ${timeout} seconds"
     echo "📋 Checking logs..."
-    docker-compose logs granite-speech-backend
+    docker compose logs granite-speech-backend
     exit 1
 fi
 
@@ -62,8 +62,8 @@ echo "🎉 Backend is running successfully!"
 echo "📡 API available at: http://localhost:8000"
 echo "🏥 Health check: http://localhost:8000/health"
 echo ""
-echo "🔍 To check logs: docker-compose logs -f granite-speech-backend"
-echo "🛑 To stop: docker-compose down"
+echo "🔍 To check logs: docker compose logs -f granite-speech-backend"
+echo "🛑 To stop: docker compose down"
 
 # Get the container's IP address for network access
 CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' granite-speech-backend)

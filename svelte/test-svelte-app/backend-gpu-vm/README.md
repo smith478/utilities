@@ -135,10 +135,10 @@ PYTHONPATH=/granite-speech-asr # Python path
 ### Check Status
 ```bash
 # Container status
-docker-compose ps
+docker compose ps
 
 # Live logs
-docker-compose logs -f granite-speech-backend
+docker compose logs -f granite-speech-backend
 
 # Resource usage
 docker stats granite-speech-backend
@@ -171,7 +171,7 @@ curl -X POST -F "file=@test.wav" http://localhost:8000/api/audio
 2. **Backend not starting:**
    ```bash
    # Check logs
-   docker-compose logs granite-speech-backend
+   docker compose logs granite-speech-backend
    
    # Check GPU availability
    docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
@@ -181,7 +181,7 @@ curl -X POST -F "file=@test.wav" http://localhost:8000/api/audio
    ```bash
    # The model will download automatically on first run
    # Monitor progress in logs
-   docker-compose logs -f granite-speech-backend
+   docker compose logs -f granite-speech-backend
    ```
 
 4. **Frontend can't connect:**
@@ -207,16 +207,16 @@ curl -X POST -F "file=@test.wav" http://localhost:8000/api/audio
 ./run.sh
 
 # Stop backend
-docker-compose down
+docker compose down
 
 # Restart backend
-docker-compose restart granite-speech-backend
+docker compose restart granite-speech-backend
 
 # Update image
-./build.sh && docker-compose up -d
+./build.sh && docker compose up -d
 
 # Clean up
-docker-compose down --volumes --rmi all
+docker compose down --volumes --rmi all
 ```
 
 ## 📈 Scaling
