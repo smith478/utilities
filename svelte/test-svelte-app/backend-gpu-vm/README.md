@@ -227,3 +227,13 @@ For production use, consider:
 2. **Monitoring:** Add Prometheus/Grafana for metrics
 3. **Logging:** Centralized logging with ELK stack
 4. **Security:** Add authentication and HTTPS
+
+## Front End
+
+To run the frontend application using a remote backend (on the same network), use:
+```bash
+VITE_BACKEND_URL=http://<DESKTOP_IP>:8000 npm run dev -- --open
+
+# For example
+VITE_BACKEND_URL=http://192.168.7.97:8000 npm run dev -- --open
+```
