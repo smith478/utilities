@@ -250,25 +250,31 @@
         method: 'POST',
         body: formData
       });
+
+      // Check if the response was successful (status 2xx)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(`Server error: ${response.status} - ${errorData.detail || errorData.message || 'Failed to save recording'}`);
+      }
       
       const result = await response.json();
       
-      // Create local URL for immediate playback
-      const newAudioURL = URL.createObjectURL(blob);
-      result.recording.audioURL = newAudioURL;
-      
-      // Add to recordings list
-      recordings = [...recordings, result.recording];
-      
-      // Mark as pending transcription
-      pendingTranscriptions.add(result.recording.id);
-      
-      // Start polling for transcription
-      startTranscriptionPolling(result.recording.id);
-      
-      return result.recording;
+      // Ensure result and result.recording exist before proceeding
+      if (result && result.recording) {
+        const newAudioURL = URL.createObjectURL(blob);
+        result.recording.audioURL = newAudioURL; // This line caused the error
+
+        recordings = [...recordings, result.recording];
+        pendingTranscriptions.add(result.recording.id);
+        startTranscriptionPolling(result.recording.id);
+
+        return result.recording;
+      } else {
+        throw new Error("Invalid response from server: 'recording' data missing.");
+      }
     } catch (e) {
       error = e.message;
+      console.error("Error saving recording to server:", e);
       return null;
     }
   }
