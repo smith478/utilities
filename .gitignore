@@ -9,6 +9,7 @@ open_web_ui_stt/models/*
 
 flashcard_game/math_leaderboard.json
 flashcard_game/leaderboard.json
+flashcard_game/multiplication_leaderboard.json
 
 open_web_ui/.env
 open_web_ui/.env.searxng
