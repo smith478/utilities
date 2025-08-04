@@ -90,3 +90,75 @@ One-way messages that don’t require a response. Typically sent from Server to 
 ```
 
 **Transport Mechanisms**
+
+JSON-RPC defines the message format, but MCP also specifies how these messages are transported between Clients and Servers. Two primary transport mechanisms are supported:
+
+- stdio (Standard Input/Output): The stdio transport is used for local communication, where the Client and Server run on the same machine.
+- HTTP + SSE (Server-Sent Events) / Streamable HTTP: The HTTP+SSE transport is used for remote communication, where the Client and Server might be on different machines.
+
+### Understanding MCP Capabilities
+
+MCP Servers expose a variety of capabilities to Clients through the communication protocol. These capabilities fall into four main categories.
+
+- Tools
+- Resources
+- Prompts
+- Sampling
+
+**Discover Process**
+
+One of MCP’s key features is dynamic capability discovery. When a Client connects to a Server, it can query the available Tools, Resources, and Prompts through specific list methods:
+
+- `tools/list`
+- `resources/list`
+- `prompts/list`
+
+### MCP SDK
+
+The Model Context Protocol provides official SDKs for both JavaScript, Python and other languages. This makes it easy to implement MCP clients and servers in your applications. These SDKs handle the low-level protocol details, allowing you to focus on building your application’s capabilities.
+
+Here's example code for a simple MCP server:
+```python
+from mcp.server.fastmcp import FastMCP
+
+# Create an MCP server
+mcp = FastMCP("Weather Service")
+
+# Tool implementation
+@mcp.tool()
+def get_weather(location: str) -> str:
+    """Get the current weather for a specified location."""
+    return f"Weather in {location}: Sunny, 72°F"
+
+# Resource implementation
+@mcp.resource("weather://{location}")
+def weather_resource(location: str) -> str:
+    """Provide weather data as a resource."""
+    return f"Weather data for {location}: Sunny, 72°F"
+
+# Prompt implementation
+@mcp.prompt()
+def weather_report(location: str) -> str:
+    """Create a weather report prompt."""
+    return f"""You are a weather reporter. Weather report for {location}?"""
+
+
+# Run the server
+if __name__ == "__main__":
+    mcp.run()
+```
+
+In order to run this script/server we need a Python environment with `mcp`. For example:
+```bash
+uv init
+uv venv
+source .venv/bin/activate
+uv pip install "mcp[cli]"
+```
+
+This server can be started with:
+```bash
+mcp dev simple_server.py
+```
+
+You can then open the MCP Inspector at http://127.0.0.1:6274 to see the server’s capabilities and interact with them.
