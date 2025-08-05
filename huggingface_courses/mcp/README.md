@@ -162,3 +162,144 @@ mcp dev simple_server.py
 ```
 
 You can then open the MCP Inspector at http://127.0.0.1:6274 to see the server’s capabilities and interact with them.
+
+### MCP Clients
+
+**Understanding MCP Clients**
+
+MCP Clients are crucial components that act as the bridge between AI applications (Hosts) and external capabilities provided by MCP Servers. Think of the Host as your main application (like an AI assistant or IDE) and the Client as a specialized module within that Host responsible for handling MCP communications.
+
+We start by exploring the user interface clients that are available for the MCP.
+- Chat Interface Clients: Anthropic’s Claude Desktop stands as one of the most prominent MCP Clients, providing integration with various MCP Servers.
+- Interactive Development Clients: Cursor’s MCP Client implementation enables AI-powered coding assistance through direct integration with code editing capabilities. It supports multiple MCP Server connections and provides real-time tool invocation during coding, making it a powerful tool for developers.
+
+**Configuring MCP Clients**
+
+MCP hosts use configuration files to manage server connections. These files define which servers are available and how to connect to them.
+
+The standard configuration file for MCP is named `mcp.json`. Here’s the basic structure (which can be passed to applications like Claude Desktop, Cursor, or VS Code):
+
+```json
+{
+  "servers": [
+    {
+      "name": "Server Name",
+      "transport": {
+        "type": "stdio|sse",
+        // Transport-specific configuration
+      }
+    }
+  ]
+}
+```
+
+Configuration for stdio Transport:
+
+```json
+{
+  "servers": [
+    {
+      "name": "File Explorer",
+      "transport": {
+        "type": "stdio",
+        "command": "python",
+        "args": ["/path/to/file_explorer_server.py"] // This is an example, we'll use a real server in the next unit
+      }
+    }
+  ]
+}
+```
+
+Configuration for HTTP+SSE Transport:
+
+```json
+{
+  "servers": [
+    {
+      "name": "Remote API Server",
+      "transport": {
+        "type": "sse",
+        "url": "https://example.com/mcp-server"
+      }
+    }
+  ]
+}
+```
+
+Environment variables can be passed to server processes using the `env` field. Here’s how to access them in your server code:
+
+```python
+import os
+
+# Access environment variables
+github_token = os.environ.get("GITHUB_TOKEN")
+if not github_token:
+    raise ValueError("GITHUB_TOKEN environment variable is required")
+
+# Use the token in your server code
+def make_github_request():
+    headers = {"Authorization": f"Bearer {github_token}"}
+    # ... rest of your code
+```
+
+The corresponding configuration in `mcp.json` would look like this:
+
+```json
+{
+  "servers": [
+    {
+      "name": "GitHub API",
+      "transport": {
+        "type": "stdio",
+        "command": "python",
+        "args": ["/path/to/github_server.py"], // This is an example, we'll use a real server in the next unit
+        "env": {
+          "GITHUB_TOKEN": "your_github_token"
+        }
+      }
+    }
+  ]
+}
+```
+
+**Tiny Agents Clients**
+
+You can use tiny agents as MCP Clients to connect directly to MCP servers from your code. Tiny agents provide a simple way to create AI agents that can use tools from MCP servers.
+
+Tiny Agent can run MCP servers with a command line environment. To do this, we will need to install `npm` and run the server with `npx`.
+
+Setup
+
+First, we will need to install `npx`:
+```bash
+npm install -g npx
+```
+
+Then, we will need to install the `huggingface_hub` package with the MCP support. This will allow us to run MCP servers and clients.
+```bash
+pip install "huggingface_hub[mcp]>=0.32.0"
+```
+
+Connecting to MCP Servers
+
+Let’s create an agent configuration file `agent.json`. This is an MCP server that can control a browser with Playwright:
+```json
+{
+    "model": "Qwen/Qwen2.5-72B-Instruct",
+    "provider": "nebius",
+    "servers": [
+        {
+            "type": "stdio",
+            "config": {
+                "command": "npx",
+                "args": ["@playwright/mcp@latest"]
+            }
+        }
+    ]
+}
+```
+ 
+The agent can be run with
+```bash
+tiny-agents run agent.json
+```
