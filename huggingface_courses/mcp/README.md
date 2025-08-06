@@ -277,7 +277,7 @@ npm install -g npx
 
 Then, we will need to install the `huggingface_hub` package with the MCP support. This will allow us to run MCP servers and clients.
 ```bash
-pip install "huggingface_hub[mcp]>=0.32.0"
+uv pip install "huggingface_hub[mcp]>=0.32.0"
 ```
 
 Connecting to MCP Servers
@@ -290,10 +290,8 @@ Let’s create an agent configuration file `agent.json`. This is an MCP server t
     "servers": [
         {
             "type": "stdio",
-            "config": {
-                "command": "npx",
-                "args": ["@playwright/mcp@latest"]
-            }
+            "command": "npx",
+            "args": ["@playwright/mcp@latest"]
         }
     ]
 }
@@ -302,4 +300,75 @@ Let’s create an agent configuration file `agent.json`. This is an MCP server t
 The agent can be run with
 ```bash
 tiny-agents run agent.json
+# OR you may need: python -m huggingface_hub.inference._mcp.cli run agent.json
 ```
+
+### Gradio MCP Integration
+
+Gradio allows developers to create UIs for their models with just a few lines of Python code.  It’s particularly useful for:
+
+- Creating demos and prototypes
+- Sharing models with non-technical users
+- Testing and debugging model behavior
+
+With the addition of MCP support, Gradio now offers a straightforward way to expose AI model capabilities through the standardized MCP protocol.
+
+Install Gradio with MCP support:
+```bash
+uv pip install "gradio[mcp]"
+```
+
+**Creating an MCP Server with Gradio**
+
+Here is a basic example of creating an MCP Server using Gradio:
+
+```python
+import gradio as gr
+
+def letter_counter(word: str, letter: str) -> int:
+    """
+    Count the number of occurrences of a letter in a word or text.
+
+    Args:
+        word (str): The input text to search through
+        letter (str): The letter to search for
+
+    Returns:
+        int: The number of times the letter appears in the text
+    """
+    word = word.lower()
+    letter = letter.lower()
+    count = word.count(letter)
+    return count
+
+# Create a standard Gradio interface
+demo = gr.Interface(
+    fn=letter_counter,
+    inputs=["textbox", "textbox"],
+    outputs="number",
+    title="Letter Counter",
+    description="Enter text and a letter to count how many times the letter appears in the text."
+)
+
+# Launch both the Gradio web interface and the MCP server
+if __name__ == "__main__":
+    demo.launch(mcp_server=True)
+```
+
+With this setup, your letter counter function is now accessible through:
+
+1. A traditional Gradio web interface for direct human interaction
+2. An MCP Server that can be connected to compatible clients
+The MCP server will be accessible at:
+```bash
+http://your-server:port/gradio_api/mcp/sse
+```
+
+When you set mcp_server=True in launch(), several things happen:
+
+1. Gradio functions are automatically converted to MCP Tools
+2. Input components map to tool argument schemas
+3. Output components determine the response format
+4. The Gradio server now also listens for MCP protocol messages
+5. JSON-RPC over HTTP+SSE is set up for client-server communication
+
