@@ -372,3 +372,37 @@ When you set mcp_server=True in launch(), several things happen:
 4. The Gradio server now also listens for MCP protocol messages
 5. JSON-RPC over HTTP+SSE is set up for client-server communication
 
+## Use Case: End-to-End MCP Application
+
+Here we will build a complete MCP application from scratch, focusing on creating a server with Gradio and connecting it with multiple clients.
+
+Overview:
+
+- Create an MCP Server using Gradio’s built-in MCP support
+- Build a sentiment analysis tool that can be used by AI models
+- Connect to the server using different client implementations:
+    - A HuggingFace.js-based client
+    - A SmolAgents-based client for Python
+- Deploy your MCP Server to Hugging Face Spaces
+- Test and debug the complete system
+
+Our project will be a sentiment analysis application that consists of three parts: the server, the client, and the deployment.
+
+Server side
+
+- Uses Gradio to create a web interface and MCP server via gr.Interface
+- Implements a sentiment analysis tool using TextBlob
+- Exposes the tool through both HTTP and MCP protocols
+
+Client side
+
+- Implements a HuggingFace.js client
+- Or, creates a smolagents Python client
+- Demonstrates how to use the same server with different client implementations
+
+Deployment
+
+- Deploys the server to Hugging Face Spaces
+- Configures the clients to work with the deployed server
+
+### Building the Gradio MCP Server
