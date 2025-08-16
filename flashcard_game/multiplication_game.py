@@ -5,6 +5,11 @@ from tkinter import messagebox, font
 import json
 from datetime import datetime
 
+DEFAULT_CHALLENGE_PROBLEMS = 5
+DEFAULT_STANDARD_PROBLEMS = 5
+CHALLENGE_NUMBERS = {3, 4, 6, 7, 8, 9}
+
+
 class MultiplicationFlashCards:
     def __init__(self):
         self.window = tk.Tk()
@@ -14,9 +19,11 @@ class MultiplicationFlashCards:
         
         self.score = 0
         self.problem_count = 0
-        self.max_problems = 10
+        self.max_problems = DEFAULT_CHALLENGE_PROBLEMS + DEFAULT_STANDARD_PROBLEMS
         self.current_problem = None
         self.start_time = None
+        self.challenge_problems_count = 0
+        self.standard_problems_count = 0
         
         # Vibrant button styles - purple theme for multiplication
         self.button_bg = "#8A2BE2"  # Blue violet
@@ -133,10 +140,33 @@ class MultiplicationFlashCards:
         # Initialize game state
         self.score = 0
         self.problem_count = 0
+        self.challenge_problems_count = 0
+        self.standard_problems_count = 0
         self.current_problem = None
         self.score_label.config(text="Score: 0")
         self.progress_label.config(text=f"Problem: 0/{self.max_problems}")
         
+        # Create problem lists
+        all_numbers = list(range(1, self.max_num + 1))
+        challenge_numbers = list(CHALLENGE_NUMBERS)
+        
+        challenge_problems = []
+        while len(challenge_problems) < DEFAULT_CHALLENGE_PROBLEMS:
+            num1 = random.choice(challenge_numbers)
+            num2 = random.choice(challenge_numbers)
+            if num1 * num2 <= 100: # Optional: limit answer size
+                challenge_problems.append((num1, num2))
+
+        standard_problems = []
+        while len(standard_problems) < DEFAULT_STANDARD_PROBLEMS:
+            num1 = random.choice(all_numbers)
+            num2 = random.choice(all_numbers)
+            if not (num1 in CHALLENGE_NUMBERS and num2 in CHALLENGE_NUMBERS):
+                standard_problems.append((num1, num2))
+
+        self.problems = challenge_problems + standard_problems
+        random.shuffle(self.problems)
+
         # Record the overall game start time
         self.game_start_time = time.time()
         self.generate_problem()
@@ -194,12 +224,7 @@ class MultiplicationFlashCards:
                                       font=("Arial", 36, "bold"), bg="#E6F3FF", fg="#4B0082")
         self.problem_label.pack(pady=20)
         
-        # Challenge indicator
-        self.challenge_label = tk.Label(self.window, text="", 
-                                        font=("Arial", 16, "bold"), 
-                                        bg="#E6F3FF", 
-                                        fg="#8A2BE2")  # Use the same purple as buttons
-        self.challenge_label.pack(pady=5)
+        
         
         # Answer entry frame and widget
         self.answer_frame = tk.Frame(self.window, bg="#E6F3FF")
@@ -242,55 +267,23 @@ class MultiplicationFlashCards:
         # Initially hide game elements
         self.hide_game_elements()
 
-    def calculate_difficulty_bonus(self, num1, num2):
-        """Calculate bonus points based on problem difficulty for multiplication"""
-        bonus = 0
-        bonus_text = ""
-        is_challenge = False
-        
-        # Challenge bonuses for multiplication:
-        # 1. Both numbers >= 6 (harder single-digit multiplication)
-        if num1 >= 6 and num2 >= 6:
-            bonus += 10
-            bonus_text = "Double-digit challenge bonus (+10)"
-            is_challenge = True
-        # 2. One number is 7, 8, or 9 (trickier times tables)
-        elif num1 in [7, 8, 9] or num2 in [7, 8, 9]:
-            bonus += 5
-            bonus_text = "Times table challenge bonus (+5)"
-            is_challenge = True
-        # 3. Multiplying by 11 or 12 (beyond basic times tables)
-        elif num1 >= 11 or num2 >= 11:
-            bonus += 7
-            bonus_text = "Advanced multiplication bonus (+7)"
-            is_challenge = True
-        
-        return bonus, bonus_text, is_challenge
+    
         
     def generate_problem(self):
-        if self.problem_count >= self.max_problems:
+        if not self.problems:
             self.end_game()
             return
-            
-        # Generate multiplication problem
-        num1 = random.randint(1, self.max_num)
-        num2 = random.randint(1, self.max_num)
+
+        num1, num2 = self.problems.pop()
         answer = num1 * num2
-            
+
         self.current_problem = {
             'num1': num1,
             'num2': num2,
             'operation': '×',
             'answer': answer
         }
-        
-        # Check if this is a challenge problem and update the challenge label
-        _, _, is_challenge = self.calculate_difficulty_bonus(num1, num2)
-        if is_challenge:
-            self.challenge_label.config(text="🌟 CHALLENGE PROBLEM! Extra points available! 🌟")
-        else:
-            self.challenge_label.config(text="")
-        
+
         self.problem_label.config(text=f"{num1} × {num2} = ?")
         self.progress_label.config(text=f"Problem: {self.problem_count + 1}/{self.max_problems}")
         self.problem_count += 1
@@ -303,7 +296,6 @@ class MultiplicationFlashCards:
 
     def hide_game_elements(self):
         self.problem_label.pack_forget()
-        self.challenge_label.pack_forget()
         self.answer_frame.pack_forget()
         self.score_label.pack_forget()
         self.progress_label.pack_forget()
@@ -311,7 +303,6 @@ class MultiplicationFlashCards:
         
     def show_game_elements(self):
         self.problem_label.pack(pady=20)
-        self.challenge_label.pack(pady=5)
         self.answer_frame.pack(pady=20)
         self.score_label.pack(pady=10)
         self.progress_label.pack(pady=10)
@@ -326,23 +317,12 @@ class MultiplicationFlashCards:
             time_taken = time.time() - self.start_time
             
             if user_answer == self.current_problem['answer']:
-                base_score = 10
-                time_bonus = max(0, 5 - int(time_taken))
+                problem_score = 10
+                time_bonus = max(0, 10 - int(time_taken))
+                self.score += problem_score + time_bonus
                 
-                # Calculate difficulty bonus
-                difficulty_bonus, bonus_text, _ = self.calculate_difficulty_bonus(
-                    self.current_problem['num1'],
-                    self.current_problem['num2']
-                )
-                
-                problem_score = base_score + time_bonus + difficulty_bonus
-                self.score += problem_score
-                
-                # Update feedback text to include bonus information
-                feedback_text = f"✅ Correct! +{problem_score} points (Time: {time_taken:.1f} sec)"
-                if bonus_text:
-                    feedback_text += f" {bonus_text}"
-                    
+                # Update feedback text
+                feedback_text = f"✅ Correct! +{problem_score} points (+{time_bonus} time bonus) (Time: {time_taken:.1f} sec)"
                 self.feedback_label.config(text=feedback_text, fg="green")
             else:
                 # Display inline feedback in red
