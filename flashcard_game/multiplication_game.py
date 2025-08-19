@@ -140,6 +140,7 @@ class MultiplicationFlashCards:
         # Initialize game state
         self.score = 0
         self.problem_count = 0
+        self.correct_answers = 0
         self.challenge_problems_count = 0
         self.standard_problems_count = 0
         self.current_problem = None
