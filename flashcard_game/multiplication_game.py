@@ -52,7 +52,7 @@ class MultiplicationFlashCards:
             leaderboard_text = "No high scores yet. Be the first to set one!"
         else:
             leaderboard_text = "\n".join(
-                [f"{i+1}. {entry['name']}: {entry['score']} ({entry['time']:.1f}s)" 
+                [f"{i+1}. {entry['name']}: {entry['score']} correct answers ({entry['time']:.1f}s)" 
                  for i, entry in enumerate(self.leaderboard)]
             )
         messagebox.showinfo("Multiplication Leaderboard", leaderboard_text)
@@ -64,7 +64,7 @@ class MultiplicationFlashCards:
         # Add to leaderboard
         self.leaderboard.append({
             "name": self.player_name,
-            "score": self.score,
+            "score": self.correct_answers,
             "time": total_time,
             "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
@@ -76,14 +76,14 @@ class MultiplicationFlashCards:
         
         # Build leaderboard text
         leaderboard_text = "\n".join(
-            [f"{i+1}. {entry['name']}: {entry['score']} ({entry['time']:.1f}s)" 
+            [f"{i+1}. {entry['name']}: {entry['score']} correct answers ({entry['time']:.1f}s)" 
              for i, entry in enumerate(self.leaderboard)]
         )
         
         # Show results (this popup now includes the updated leaderboard)
         messagebox.showinfo(
             "Game Over!",
-            f"Final Score: {self.score}\n"
+            f"Correct Answers: {self.correct_answers}\n"
             f"Total Time: {total_time:.1f} seconds\n\n"
             "🏆 Multiplication Leaderboard 🏆\n" + leaderboard_text
         )
@@ -144,7 +144,7 @@ class MultiplicationFlashCards:
         self.challenge_problems_count = 0
         self.standard_problems_count = 0
         self.current_problem = None
-        self.score_label.config(text="Score: 0")
+        self.score_label.config(text="Correct Answers: 0")
         self.progress_label.config(text=f"Problem: 0/{self.max_problems}")
         
         # Create problem lists
@@ -256,7 +256,7 @@ class MultiplicationFlashCards:
         self.submit_btn.pack(side=tk.LEFT)
         
         # Score display
-        self.score_label = tk.Label(self.window, text="Score: 0", 
+        self.score_label = tk.Label(self.window, text="Correct Answers: 0", 
                                     font=("Arial", 18), bg="#E6F3FF", fg="#4B0082")
         self.score_label.pack(pady=10)
         
@@ -318,18 +318,14 @@ class MultiplicationFlashCards:
             time_taken = time.time() - self.start_time
             
             if user_answer == self.current_problem['answer']:
-                problem_score = 10
-                time_bonus = max(0, 10 - int(time_taken))
-                self.score += problem_score + time_bonus
-                
-                # Update feedback text
-                feedback_text = f"✅ Correct! +{problem_score} points (+{time_bonus} time bonus) (Time: {time_taken:.1f} sec)"
+                self.correct_answers += 1
+                feedback_text = f"✅ Correct! (Time: {time_taken:.1f} sec)"
                 self.feedback_label.config(text=feedback_text, fg="green")
             else:
                 # Display inline feedback in red
                 self.feedback_label.config(text=f"❌ Incorrect. Right answer was {self.current_problem['answer']}", fg="red")
                 
-            self.score_label.config(text=f"Score: {self.score}")
+            self.score_label.config(text=f"Correct Answers: {self.correct_answers}")
             
             # Automatically move to next problem after a short delay
             self.window.after(1500, self.generate_problem)
