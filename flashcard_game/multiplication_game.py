@@ -46,16 +46,62 @@ class MultiplicationFlashCards:
         with open("multiplication_leaderboard.json", "w") as f:
             json.dump(self.leaderboard, f)
 
+    def show_custom_leaderboard(self, title, leaderboard_text):
+        leaderboard_window = tk.Toplevel(self.window)
+        leaderboard_window.title(title)
+        leaderboard_window.geometry("600x400")  # Set a fixed size for the window
+
+        text_widget = tk.Text(leaderboard_window, wrap=tk.WORD, font=("Courier", 12))
+        text_widget.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
+
+        text_widget.insert(tk.END, leaderboard_text)
+        text_widget.config(state=tk.DISABLED)  # Make the text widget read-only
+
+        close_button = tk.Button(leaderboard_window, text="Close", command=leaderboard_window.destroy)
+        close_button.pack(pady=10)
+
+    def show_end_game_dialog(self, score, correct_answers, total_time, leaderboard_text):
+        dialog = tk.Toplevel(self.window)
+        dialog.title("Game Over!")
+        dialog.geometry("600x400")
+
+        info_frame = tk.Frame(dialog)
+        info_frame.pack(pady=10)
+
+        tk.Label(info_frame, text=f"Final Score: {score}", font=("Arial", 14)).pack()
+        tk.Label(info_frame, text=f"Correct Answers: {correct_answers}", font=("Arial", 14)).pack()
+        tk.Label(info_frame, text=f"Total Time: {total_time:.1f} seconds", font=("Arial", 14)).pack()
+
+        leaderboard_frame = tk.Frame(dialog)
+        leaderboard_frame.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
+
+        tk.Label(leaderboard_frame, text="🏆 Multiplication Leaderboard 🏆", font=("Arial", 16, "bold")).pack(pady=5)
+
+        text_widget = tk.Text(leaderboard_frame, wrap=tk.WORD, font=("Courier", 12))
+        text_widget.pack(expand=True, fill=tk.BOTH)
+
+        text_widget.insert(tk.END, leaderboard_text)
+        text_widget.config(state=tk.DISABLED)
+
+        close_button = tk.Button(dialog, text="Close", command=dialog.destroy)
+        close_button.pack(pady=10)
+
     def show_leaderboard_popup(self):
         """Display the leaderboard in a popup when the app starts."""
         if not self.leaderboard:
             leaderboard_text = "No high scores yet. Be the first to set one!"
         else:
-            leaderboard_text = "\n".join(
-                [f"{i+1}. {entry['name']}: {entry['score']} correct answers ({entry['time']:.1f}s)" 
-                 for i, entry in enumerate(self.leaderboard)]
-            )
-        messagebox.showinfo("Multiplication Leaderboard", leaderboard_text)
+            header = f"{'Rank':<5}{'Name':<15}{'Score':<10}{'Correct':<10}{'Time (s)':<10}\n{'-'*55}"
+            leaderboard_entries = []
+            for i, entry in enumerate(self.leaderboard):
+                rank = f'{i+1}.'
+                name = entry['name']
+                score = entry['score']
+                correct = entry.get('correct_answers', 'N/A')
+                time_val = f"{entry['time']:.1f}"
+                leaderboard_entries.append(f"{rank:<5}{name:<15}{score:<10}{correct:<10}{time_val:<10}")
+            leaderboard_text = header + "\n" + "\n".join(leaderboard_entries)
+        self.show_custom_leaderboard("Multiplication Leaderboard", leaderboard_text)
 
     def end_game(self):
         # Calculate total game time correctly
@@ -64,7 +110,8 @@ class MultiplicationFlashCards:
         # Add to leaderboard
         self.leaderboard.append({
             "name": self.player_name,
-            "score": self.correct_answers,
+            "score": self.score,
+            "correct_answers": self.correct_answers,
             "time": total_time,
             "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
@@ -75,18 +122,19 @@ class MultiplicationFlashCards:
         self.save_leaderboard()
         
         # Build leaderboard text
-        leaderboard_text = "\n".join(
-            [f"{i+1}. {entry['name']}: {entry['score']} correct answers ({entry['time']:.1f}s)" 
-             for i, entry in enumerate(self.leaderboard)]
-        )
+        header = f"{'Rank':<5}{'Name':<15}{'Score':<10}{'Correct':<10}{'Time (s)':<10}\n{'-'*55}"
+        leaderboard_entries = []
+        for i, entry in enumerate(self.leaderboard):
+            rank = f'{i+1}.'
+            name = entry['name']
+            score = entry['score']
+            correct = entry.get('correct_answers', 'N/A')
+            time_val = f"{entry['time']:.1f}"
+            leaderboard_entries.append(f"{rank:<5}{name:<15}{score:<10}{correct:<10}{time_val:<10}")
+        leaderboard_text = header + "\n" + "\n".join(leaderboard_entries)
         
         # Show results (this popup now includes the updated leaderboard)
-        messagebox.showinfo(
-            "Game Over!",
-            f"Correct Answers: {self.correct_answers}\n"
-            f"Total Time: {total_time:.1f} seconds\n\n"
-            "🏆 Multiplication Leaderboard 🏆\n" + leaderboard_text
-        )
+        self.show_end_game_dialog(self.score, self.correct_answers, total_time, leaderboard_text)
         
         # Hide game elements
         self.hide_game_elements()
@@ -144,7 +192,7 @@ class MultiplicationFlashCards:
         self.challenge_problems_count = 0
         self.standard_problems_count = 0
         self.current_problem = None
-        self.score_label.config(text="Correct Answers: 0")
+        self.score_label.config(text="Score: 0")
         self.progress_label.config(text=f"Problem: 0/{self.max_problems}")
         
         # Create problem lists
@@ -256,7 +304,7 @@ class MultiplicationFlashCards:
         self.submit_btn.pack(side=tk.LEFT)
         
         # Score display
-        self.score_label = tk.Label(self.window, text="Correct Answers: 0", 
+        self.score_label = tk.Label(self.window, text="Score: 0", 
                                     font=("Arial", 18), bg="#E6F3FF", fg="#4B0082")
         self.score_label.pack(pady=10)
         
@@ -319,13 +367,18 @@ class MultiplicationFlashCards:
             
             if user_answer == self.current_problem['answer']:
                 self.correct_answers += 1
-                feedback_text = f"✅ Correct! (Time: {time_taken:.1f} sec)"
+                problem_score = 10
+                time_bonus = max(0, 10 - int(time_taken))
+                self.score += problem_score + time_bonus
+                
+                # Update feedback text
+                feedback_text = f"✅ Correct! +{problem_score} points (+{time_bonus} time bonus) (Time: {time_taken:.1f} sec)"
                 self.feedback_label.config(text=feedback_text, fg="green")
             else:
                 # Display inline feedback in red
                 self.feedback_label.config(text=f"❌ Incorrect. Right answer was {self.current_problem['answer']}", fg="red")
                 
-            self.score_label.config(text=f"Correct Answers: {self.correct_answers}")
+            self.score_label.config(text=f"Score: {self.score} (Correct Answers: {self.correct_answers})")
             
             # Automatically move to next problem after a short delay
             self.window.after(1500, self.generate_problem)
