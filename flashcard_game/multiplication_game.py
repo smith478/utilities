@@ -32,8 +32,69 @@ class MultiplicationFlashCards:
         
         self.setup_gui()
         self.load_leaderboard()
-        # Schedule the leaderboard popup shortly after startup
-        self.window.after(100, self.show_leaderboard_popup)
+        self.show_start_screen()  # Show the initial start screen
+
+    def show_start_screen(self):
+        """Display the initial start screen for the game."""
+        # Destroy existing widgets if they exist
+        if hasattr(self, 'setup_frame'):
+            self.setup_frame.destroy()
+        if hasattr(self, 'name_frame'):
+            self.name_frame.destroy()
+        if hasattr(self, 'start_button'):
+            self.start_button.destroy()
+        if hasattr(self, 'leaderboard_button'):
+            self.leaderboard_button.destroy()
+
+        # Max number entry
+        self.setup_frame = tk.Frame(self.window, bg="#D8BFD8", relief=tk.RIDGE, borderwidth=2)
+        self.max_num_label = tk.Label(self.setup_frame, text="Highest number to multiply (1-12):", 
+                 font=("Arial", 14), bg="#D8BFD8", fg="#4B0082")
+        self.max_num_label.pack(side=tk.LEFT)
+        self.max_num_entry = tk.Entry(self.setup_frame, font=("Arial", 14))
+        self.max_num_entry.pack(side=tk.LEFT, padx=10)
+        self.max_num_entry.insert(0, "9")
+        
+        # Name entry
+        self.name_frame = tk.Frame(self.window, bg="#D8BFD8")
+        self.name_label = tk.Label(self.name_frame, text="Your name:", 
+                 font=("Arial", 14), bg="#D8BFD8", fg="#4B0082")
+        self.name_label.pack(side=tk.LEFT)
+        self.name_entry = tk.Entry(self.name_frame, font=("Arial", 14))
+        self.name_entry.pack(side=tk.LEFT, padx=10)
+        
+        # Start button with bold, eye-catching style
+        self.start_button = tk.Button(self.window, 
+                                      text="Start Game!", 
+                                      command=self.start_game, 
+                                      font=("Arial", 16, "bold"),
+                                      bg="dark turquoise", 
+                                      fg="black",
+                                      activebackground="turquoise",
+                                      activeforeground="black",
+                                      relief=tk.RAISED,
+                                      borderwidth=5,
+                                      padx=30, 
+                                      pady=15)
+        self.leaderboard_button = tk.Button(self.window, 
+                                      text="Show Leaderboard", 
+                                      command=self.show_leaderboard_popup, 
+                                      font=("Arial", 16, "bold"),
+                                      bg="dark turquoise", 
+                                      fg="black",
+                                      activebackground="turquoise",
+                                      activeforeground="black",
+                                      relief=tk.RAISED,
+                                      borderwidth=5,
+                                      padx=30, 
+                                      pady=15)
+        
+        # Pack the title and start screen elements
+        self.title_label.pack(pady=20)
+        self.setup_frame.pack(pady=20)
+        self.name_frame.pack(pady=10)
+        self.start_button.pack(pady=20)
+        self.leaderboard_button.pack(pady=10)
 
     def load_leaderboard(self):
         try:
@@ -145,10 +206,10 @@ class MultiplicationFlashCards:
                                              text="New Game", 
                                              command=self.restart_game,
                                              font=("Arial", 16, "bold"),
-                                             bg=self.button_bg, 
-                                             fg=self.button_fg,
-                                             activebackground=self.button_active_bg,
-                                             activeforeground=self.button_fg,
+                                             bg="dark turquoise", 
+                                             fg="black",
+                                             activebackground="turquoise",
+                                             activeforeground="black",
                                              relief=tk.RAISED,
                                              borderwidth=5,
                                              padx=30, 
@@ -159,10 +220,7 @@ class MultiplicationFlashCards:
     def restart_game(self):
         """Hide the new game frame and show the start page to begin a new game."""
         self.restart_frame.pack_forget()
-        # Repack the start page elements.
-        self.setup_frame.pack(pady=20)
-        self.name_frame.pack(pady=10)
-        self.start_button.pack(pady=20)
+        self.show_start_screen()
 
     def start_game(self):
         try:
@@ -180,6 +238,7 @@ class MultiplicationFlashCards:
         self.setup_frame.pack_forget()
         self.name_frame.pack_forget()
         self.start_button.pack_forget()
+        self.leaderboard_button.pack_forget()
         self.hide_restart_frame()  # In case the restart frame is showing
         self.show_game_elements()
         # Set focus on the answer box immediately when game starts
@@ -231,42 +290,10 @@ class MultiplicationFlashCards:
     def setup_gui(self):
         # Title
         title_font = font.Font(family="Arial", size=24, weight="bold")
-        title = tk.Label(self.window, text="Multiplication Flash Cards! ✨", 
-                         font=title_font, bg="#E6F3FF", fg="#4B0082")
-        title.pack(pady=20)
+        self.title_label = tk.Label(self.window, text="Multiplication Flash Cards! ✨", 
+                                    font=title_font, bg="#E6F3FF", fg="#4B0082")
         
-        # Max number entry
-        self.setup_frame = tk.Frame(self.window, bg="#E6F3FF")
-        self.setup_frame.pack(pady=20)
-        
-        tk.Label(self.setup_frame, text="Highest number to multiply (1-12):", 
-                 font=("Arial", 14), bg="#E6F3FF", fg="#4B0082").pack(side=tk.LEFT)
-        self.max_num_entry = tk.Entry(self.setup_frame, font=("Arial", 14))
-        self.max_num_entry.pack(side=tk.LEFT, padx=10)
-        self.max_num_entry.insert(0, "9")
-        
-        # Name entry
-        self.name_frame = tk.Frame(self.window, bg="#E6F3FF")
-        self.name_frame.pack(pady=10)
-        tk.Label(self.name_frame, text="Your name:", 
-                 font=("Arial", 14), bg="#E6F3FF", fg="#4B0082").pack(side=tk.LEFT)
-        self.name_entry = tk.Entry(self.name_frame, font=("Arial", 14))
-        self.name_entry.pack(side=tk.LEFT, padx=10)
-        
-        # Start button with bold, eye-catching style
-        self.start_button = tk.Button(self.window, 
-                                      text="Start Game!", 
-                                      command=self.start_game, 
-                                      font=("Arial", 16, "bold"),
-                                      bg=self.button_bg, 
-                                      fg=self.button_fg,
-                                      activebackground=self.button_active_bg,
-                                      activeforeground=self.button_fg,
-                                      relief=tk.RAISED,
-                                      borderwidth=5,
-                                      padx=30, 
-                                      pady=15)
-        self.start_button.pack(pady=20)
+        self.show_start_screen()
         
         # Problem display
         self.problem_label = tk.Label(self.window, text="", 
@@ -293,10 +320,10 @@ class MultiplicationFlashCards:
         self.submit_btn = tk.Button(self.answer_frame, text="Submit", 
                                     command=self.check_answer, 
                                     font=("Arial", 16, "bold"),
-                                    bg=self.button_bg, 
-                                    fg=self.button_fg,
-                                    activebackground=self.button_active_bg,
-                                    activeforeground=self.button_fg,
+                                    bg="dark turquoise", 
+                                    fg="black",
+                                    activebackground="turquoise",
+                                    activeforeground="black",
                                     relief=tk.RAISED,
                                     borderwidth=5,
                                     padx=30, 
