@@ -34,3 +34,10 @@ This program allows you to play a game of chess and ask for analysis and strateg
 -   Type `board` to see the current board position.
 -   Type `reset` to start a new game.
 -   Type `quit` to exit the program.
+
+
+## TODO 
+
+- Create a UI where you can click and move pieces rather than typing the moves out
+- Ability to take back a move
+- Ability to ask about quality of a move

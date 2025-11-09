@@ -1,82 +1,73 @@
 import chess
-import requests
-import json
-import sys
-import argparse
+import ollama
+from tutor import ChessOpeningTrainer
 
-class ChessTutor:
-    def __init__(self, ollama_model):
-        self.board = chess.Board()
+class OllamaChessTutor(ChessOpeningTrainer):
+    def __init__(self, engine_path=None, ollama_model="qwen3:8b"):
+        """
+        Initializes the Ollama Chess Tutor.
+
+        Args:
+            engine_path: Path to the Stockfish chess engine executable.
+            ollama_model: The name of the Ollama model to use for explanations.
+        """
+        super().__init__(engine_path)
         self.ollama_model = ollama_model
-        self.ollama_base_url = "http://localhost:11434/api/chat"
-        self.message_history = []
-
         try:
-            response = requests.get("http://localhost:11434/")
-            if response.status_code != 200:
-                print("Warning: Ollama does not seem to be running.")
-        except requests.ConnectionError:
-            print("Error: Could not connect to Ollama. Ensure it's running.")
-            sys.exit(1)
-
-    def get_llm_analysis(self, prompt):
-        self.message_history.append({"role": "user", "content": prompt})
-        
-        payload = {
-            "model": self.ollama_model,
-            "messages": self.message_history,
-            "stream": False,
-        }
-
-        try:
-            response = requests.post(self.ollama_base_url, json=payload)
-            if response.status_code == 200:
-                response_json = response.json()
-                llm_response = response_json['message']['content']
-                self.message_history.append({"role": "assistant", "content": llm_response})
-                return llm_response
-            else:
-                return f"Ollama Analysis Error: {response.text}"
+            # Check if the model is available
+            ollama.show(self.ollama_model)
+            print(f"Ollama model '{self.ollama_model}' is available.")
         except Exception as e:
-            return f"Error in Ollama analysis: {str(e)}"
+            print(f"Error with Ollama model '{self.ollama_model}': {e}")
+            print("Please ensure the model is available in Ollama.")
+            exit(1)
 
-    def run(self):
-        print("Welcome to the Chess Tutor!")
-        print("Enter moves in algebraic notation (e.g., e4, Nf3).")
-        print("Type 'board' to see the current board.")
-        print("Type 'reset' to start a new game.")
-        print("Type 'quit' to exit.")
+    def get_best_move_with_explanation(self, board, color):
+        """
+        Gets the best move from the engine and provides a detailed explanation from an LLM.
 
-        while True:
-            user_input = input("> ")
+        Args:
+            board: The current chess board state.
+            color: Color to analyze (chess.WHITE or chess.BLACK)
 
-            if user_input.lower() == 'quit':
-                break
-            elif user_input.lower() == 'board':
-                print(self.board)
-                continue
-            elif user_input.lower() == 'reset':
-                self.board.reset()
-                self.message_history = []
-                print("Board reset.")
-                continue
+        Returns:
+            A tuple containing the best move and a detailed explanation.
+        """
+        # Get the best move from Stockfish
+        best_move, stockfish_explanation = super().get_best_move_with_explanation(board, color)
 
-            try:
-                self.board.push_san(user_input)
-                print(self.board)
-                prompt = f"The current board state is in FEN format: {self.board.fen()}. What are the best moves and the general strategy from this position?"
-                analysis = self.get_llm_analysis(prompt)
-                print(f"\nAnalysis:\n{analysis}")
-            except ValueError:
-                prompt = f"The current board state is in FEN format: {self.board.fen()}. The user asked the following question: {user_input}"
-                analysis = self.get_llm_analysis(prompt)
-                print(f"\nAnalysis:\n{analysis}")
+        if not best_move:
+            return None, "Unable to get best move from Stockfish."
+
+        # Generate a more detailed explanation using Ollama
+        try:
+            move_history = " ".join([move.uci() for move in board.move_stack])
+            prompt = (
+                f"Given the following chess position (FEN: {board.fen()}) "
+                f"and the move history ({move_history}), Stockfish suggests the move {best_move.uci()}. "
+                f"Explain the strategic thinking behind this move. What is the main idea, "
+                f"and what are the potential plans or tactics that this move enables? "
+                f"Keep the explanation concise and focused on the strategy for a beginner."
+            )
+
+            response = ollama.generate(
+                model=self.ollama_model,
+                prompt=prompt
+            )
+            
+            llm_explanation = response['response']
+            return best_move, llm_explanation
+
+        except Exception as e:
+            print(f"Error getting explanation from Ollama: {e}")
+            return best_move, f"Stockfish explanation: {stockfish_explanation}"
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Chess Tutor using Ollama LLM.")
-    parser.add_argument("--model", type=str, default="gemma3:latest",
-                        help="Specify the Ollama model to use (e.g., gemma3:latest)")
-    args = parser.parse_args()
-
-    tutor = ChessTutor(ollama_model=args.model)
-    tutor.run()
+    # You can specify the model when you run the script, e.g., python tutor_ollama.py model_name
+    import sys
+    model_name = "qwen3:8b"
+    if len(sys.argv) > 1:
+        model_name = sys.argv[1]
+    
+    trainer = OllamaChessTutor(ollama_model=model_name)
+    trainer.run()
