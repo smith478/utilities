@@ -3,7 +3,7 @@ import ollama
 from tutor import ChessOpeningTrainer
 
 class OllamaChessTutor(ChessOpeningTrainer):
-    def __init__(self, engine_path=None, ollama_model="qwen3:8b"):
+    def __init__(self, engine_path=None, ollama_model="gemma3:270m"):
         """
         Initializes the Ollama Chess Tutor.
 
@@ -65,7 +65,7 @@ class OllamaChessTutor(ChessOpeningTrainer):
 if __name__ == "__main__":
     # You can specify the model when you run the script, e.g., python tutor_ollama.py model_name
     import sys
-    model_name = "qwen3:8b"
+    model_name = "gemma3:270m"
     if len(sys.argv) > 1:
         model_name = sys.argv[1]
     

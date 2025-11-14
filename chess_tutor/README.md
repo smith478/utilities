@@ -6,7 +6,14 @@ This program allows you to play a game of chess and ask for analysis and strateg
 
 1.  **Install Ollama:** Make sure you have Ollama installed and running. You can find instructions here: [https://ollama.ai/](https://ollama.ai/)
 
-2.  **Set up the virtual environment:** This project uses `uv` to manage the virtual environment. To set it up, run the following commands:
+2.  **Install Stockfish:** You need to have the Stockfish chess engine installed. You can download it from the official website: [https://stockfishchess.org/download/](https://stockfishchess.org/download/)
+
+    On macOS, you can install it using Homebrew:
+    ```bash
+    brew install stockfish
+    ```
+
+3.  **Set up the virtual environment:** This project uses `uv` to manage the virtual environment. To set it up, run the following commands:
 
     ```bash
     uv venv
@@ -14,30 +21,23 @@ This program allows you to play a game of chess and ask for analysis and strateg
     uv pip install -r requirements.txt
     ```
 
-3.  **Run the tutor:**
+4.  **Run the application:**
 
     ```bash
-    python tutor_ollama.py [--model <ollama_model_name>]
+    python app.py
     ```
 
-    For example, to use the `gemma3:12b` model:
-    ```bash
-    python tutor_ollama.py --model gemma3:12b
-    python tutor_ollama.py --model qwen3:8b
-    ```
+    Then open your web browser and go to `http://127.0.0.1:5000`.
 
 ## How to Use
 
--   Enter moves in algebraic notation (e.g., `e4`, `Nf3`).
--   After each move, the program will provide an analysis of the position.
--   You can also ask questions directly, for example: "What is the best move for black?" or "What is the idea behind moving my knight to f3?".
--   Type `board` to see the current board position.
--   Type `reset` to start a new game.
--   Type `quit` to exit the program.
-
+-   The application will open a web-based UI.
+-   You can play chess by clicking and dragging the pieces on the board.
+-   After each of your moves, the computer will make a move based on Stockfish's recommendation.
+-   The UI will display Stockfish's suggested move and an explanation from the LLM.
+-   You can use the "Undo" button to take back your last move.
 
 ## TODO 
 
-- Create a UI where you can click and move pieces rather than typing the moves out
-- Ability to take back a move
-- Ability to ask about quality of a move
+- Ability to ask about quality of a potential move
+- Add ASR/STT components

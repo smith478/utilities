@@ -1,2 +1,6 @@
 chess
 ollama
+Flask
+python-chess
+stockfish
+requests
