@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package users;
+
+// The service definition (like an Interface/Abstract Base Class)
+service UserLookup {
+    // A standard unary RPC (one request, one response)
+    rpc GetUser (UserRequest) returns (UserResponse);
+}
+
+// The data structures
+message UserRequest {
+    int32 id = 1;
+}
+
+message UserResponse {
+    int32 id = 1;
+    string username = 2;
+    string email = 3;
+    bool is_active = 4;
+}
