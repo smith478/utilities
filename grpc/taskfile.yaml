@@ -1,0 +1,21 @@
+version: '3'
+
+tasks:
+    generate:
+        desc: Generates Python gRPC code from proto files
+        cmds:
+            # We use `uv run` to execute the module within the uv environment
+            - uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. service.proto
+            - sed -i '' 's/import service_pb2/from . import service_pb2/' service_pb2_grpc.py
+
+    server:
+        desc: Runs the gRPC server
+        deps: [generate]
+        cmds:
+            - uv run server.py
+
+    client:
+        desc: Runs the gRPC client
+        deps: [generate]
+        cmds:
+            - uv run client.py

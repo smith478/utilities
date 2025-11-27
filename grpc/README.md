@@ -53,4 +53,42 @@ Our taskfile will help us define commonly used commands and simplify aspects lik
 version: '3'
 
 tasks:
+    generate:
+        desc: Generates Python gRPC code from proto files
+        cmds:
+            # We use `uv run` to execute the module within the uv environment
+            - uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. service.proto
+            - sed -i '' 's/import service_pb2/from . import service_pb2/' service_pb2_grpc.py
+
+    server:
+        desc: Runs the gRPC server
+        deps: [generate]
+        cmds:
+            - uv run server.py
+
+    client:
+        desc: Runs the gRPC client
+        deps: [generate]
+        cmds:
+            - uv run client.py
+```
+
+Now we can run the generator to create `service_pb2.py` (the data types) and `service_pb2_grpc.py` (the client/server wiring).
+
+```bash
+task generate
+```
+
+## Step 3: The Server (`server.py`)
+
+## Step 4: The Client (`client.py`)
+
+## Step 5: Running the Service
+
+```bash
+# Terminal 1
+task server
+
+# Terminal 2
+task client
 ```
