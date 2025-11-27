@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package users;
 
+option go_package = "github.com/danielsmith/utilities/grpc/proto";
+
 // The service definition (like an Interface/Abstract Base Class)
 service UserLookup {
     // A standard unary RPC (one request, one response)

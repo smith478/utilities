@@ -1,21 +1,52 @@
 version: '3'
 
 tasks:
-    generate:
+    # Python tasks
+    py:generate:
         desc: Generates Python gRPC code from proto files
+        dir: python
         cmds:
             # We use `uv run` to execute the module within the uv environment
-            - uv run python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. service.proto
+            - uv run python -m grpc_tools.protoc -I.. --python_out=. --grpc_python_out=. ../service.proto
             - sed -i '' 's/import service_pb2/from . import service_pb2/' service_pb2_grpc.py
 
-    server:
-        desc: Runs the gRPC server
-        deps: [generate]
+    py:server:
+        desc: Runs the Python gRPC server
+        deps: [py:generate]
+        dir: python
         cmds:
             - uv run server.py
 
-    client:
-        desc: Runs the gRPC client
-        deps: [generate]
+    py:client:
+        desc: Runs the Python gRPC client
+        deps: [py:generate]
+        dir: python
         cmds:
             - uv run client.py
+
+    # Go tasks
+    go:generate:
+        desc: Generates Go gRPC code from proto files
+        cmds:
+            - export PATH=$PATH:$(go env GOPATH)/bin && protoc --go_out=go/proto --go_opt=paths=source_relative --go-grpc_out=go/proto --go-grpc_opt=paths=source_relative service.proto
+
+    go:server:
+        desc: Runs the Go gRPC server
+        deps: [go:generate]
+        dir: go/server
+        cmds:
+            - go run main.go
+
+    go:client:
+        desc: Runs the Go gRPC client
+        deps: [go:generate]
+        dir: go/client
+        cmds:
+            - go run main.go
+
+    # Convenience tasks
+    generate:
+        desc: Generates gRPC code for both Python and Go
+        cmds:
+            - task: py:generate
+            - task: go:generate
